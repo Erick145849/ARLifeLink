@@ -32,11 +32,13 @@ android {
 }
 
 dependencies {
-
+    implementation ("com.google.ar:core:1.41.0")
+    implementation ("com.google.ar.sceneform:sceneform:1.17.1")
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.sceneform.ux)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

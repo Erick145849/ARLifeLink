@@ -7,6 +7,7 @@ import android.util.Log;
 import android.widget.Toast;
 import androidx.fragment.app.Fragment;
 import androidx.appcompat.app.AppCompatActivity;
+import android.view.MotionEvent;
 
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
@@ -24,31 +25,33 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Initialize the AR fragment
         Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.arFragment);
         if (fragment instanceof ArFragment) {
             arFragment = (ArFragment) fragment;
         } else {
-            Log.e("MainActivity", "The fragment is not an instance of ArFragment.");
+            Log.e("MainActivity", "Fragment is not an instance of ArFragment. Check XML.");
+            return;
         }
 
-
-        // Set up a listener for when the user taps on an AR plane
-        arFragment.setOnTapArPlaneListener((HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
-            // Create an anchor at the tapped position
-            com.google.ar.core.Anchor anchor = hitResult.createAnchor();
-
-            // Load the 3D model
-            ModelRenderable.builder()
-                    .setSource(this, Uri.parse("model.glb")) // Replace "model.glb" with the actual model file name in res/raw
-                    .build()
-                    .thenAccept(modelRenderable -> placeModel(anchor, modelRenderable))
-                    .exceptionally(throwable -> {
-                        Toast.makeText(this, "Error loading model: " + throwable.getMessage(), Toast.LENGTH_LONG).show();
-                        return null;
-                    });
-        });
+        if (arFragment != null) {
+            arFragment.setOnTapArPlaneListener((hitResult, plane, motionEvent) -> {
+                com.google.ar.core.Anchor anchor = hitResult.createAnchor();
+                ModelRenderable.builder()
+                        .setSource(this, Uri.parse("file:///android_asset/model.glb")) // Correct path
+                        .build()
+                        .thenAccept(modelRenderable -> placeModel(anchor, modelRenderable))
+                        .exceptionally(throwable -> {
+                            Toast.makeText(this, "Error loading model: " + throwable.getMessage(), Toast.LENGTH_LONG).show();
+                            return null;
+                        });
+            });
+        } else {
+            Log.e("MainActivity", "arFragment could not be initialized.");
+        }
     }
+
+
+
 
     private void placeModel(com.google.ar.core.Anchor anchor, ModelRenderable modelRenderable) {
         // Create an AnchorNode for the anchor

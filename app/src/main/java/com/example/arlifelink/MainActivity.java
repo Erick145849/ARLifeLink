@@ -56,4 +56,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        // Check if the user is already signed in
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            // If not signed in, redirect to LoginActivity
+            startActivity(new Intent(MainActivity.this, LoginActivity.class));
+            finish();
+        }
+    }
 }

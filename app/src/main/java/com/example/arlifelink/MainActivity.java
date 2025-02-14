@@ -12,49 +12,37 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class MainActivity extends AppCompatActivity {
 
-    private FirebaseAuth mAuth;
-    private Button btnLogout;
-    private TextView txtUserEmail;
-    private Button button;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mAuth = FirebaseAuth.getInstance();
-        btnLogout = findViewById(R.id.btnLogout);
-        txtUserEmail = findViewById(R.id.txtUserEmail);
-        button = findViewById(R.id.ARbutton);
+        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
 
-        if (mAuth.getCurrentUser() != null) {
-            txtUserEmail.setText("Welcome, " + mAuth.getCurrentUser().getEmail());
-        }
+        // Load default fragment
+        getSupportFragmentManager().beginTransaction().replace(R.id.container, new MainFragment()).commit();
 
-        btnLogout.setOnClickListener(v -> {
-            mAuth.signOut();
-            startActivity(new Intent(MainActivity.this, LoginActivity.class));
-            finish();
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            Fragment selectedFragment = null;
+            if(item.getItemId()==R.id.nav_main)
+                selectedFragment = new MainFragment();
+            else if(item.getItemId()==R.id.nav_ar)
+                selectedFragment = new ARFragment();
+            else if(item.getItemId()==R.id.nav_memories_map)
+                selectedFragment = new MemoriesMapFragment();
+            else if(item.getItemId()==R.id.nav_account)
+                selectedFragment = new AccountFragment();
+            getSupportFragmentManager().beginTransaction().replace(R.id.container, selectedFragment).commit();
+            return true;
         });
 
-        button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent sceneViewerIntent = new Intent(Intent.ACTION_VIEW);
-                Uri intentUri =
-                        Uri.parse("https://arvr.google.com/scene-viewer/1.0").buildUpon()
-                                .appendQueryParameter("file", "https://raw.githubusercontent.com/Erick145849/ARPicture/refs/heads/main/scene.gltf")
-                                .appendQueryParameter("mode", "ar_only")
-                                .build();
-                sceneViewerIntent.setData(intentUri);
-                sceneViewerIntent.setPackage("com.google.android.googlequicksearchbox");
-                startActivity(sceneViewerIntent);
-            }
-        });
     }
     @Override
     protected void onStart() {

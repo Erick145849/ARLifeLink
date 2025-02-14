@@ -36,6 +36,10 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation ("com.google.firebase:firebase-firestore:24.8.1")
+    implementation ("com.google.android.material:material:1.9.0")
+    implementation ("androidx.fragment:fragment:1.6.1")
+    implementation ("com.google.android.gms:play-services-maps:18.1.0")
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)

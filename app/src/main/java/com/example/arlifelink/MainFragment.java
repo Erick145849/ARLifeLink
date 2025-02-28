@@ -8,6 +8,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.Toast;
+import android.widget.Spinner;
+import android.widget.ArrayAdapter;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -67,20 +69,51 @@ public class MainFragment extends Fragment {
 
             View dialogView = inflater.inflate(R.layout.dialog_add_note, null);
             EditText inputTitle = dialogView.findViewById(R.id.inputTitle);
-            EditText inputDate = dialogView.findViewById(R.id.inputDate);
-            EditText inputContext = dialogView.findViewById(R.id.inputContext);
             EditText inputLocation = dialogView.findViewById(R.id.inputLocation);
+            EditText inputDueDate = dialogView.findViewById(R.id.inputDueDate);
+            EditText inputReminder = dialogView.findViewById(R.id.inputReminder);
+            EditText inputSmallInfo = dialogView.findViewById(R.id.inputSmallInfo);
+
+            Spinner spinnerPriority = dialogView.findViewById(R.id.inputPriority);
+            Spinner spinnerTags = dialogView.findViewById(R.id.inputCategory);
+            Spinner spinnerColor = dialogView.findViewById(R.id.inputColor);  // Color Spinner
+
+            // Set up spinners with default selections
+            ArrayAdapter<CharSequence> priorityAdapter = ArrayAdapter.createFromResource(getContext(),
+                    R.array.priority_levels, android.R.layout.simple_spinner_item);
+            priorityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerPriority.setAdapter(priorityAdapter);
+            spinnerPriority.setSelection(0);  // Ensure a default value is selected
+
+            ArrayAdapter<CharSequence> tagsAdapter = ArrayAdapter.createFromResource(getContext(),
+                    R.array.categories, android.R.layout.simple_spinner_item);
+            tagsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerTags.setAdapter(tagsAdapter);
+            spinnerTags.setSelection(0);  // Ensure a default value is selected
+
+            ArrayAdapter<CharSequence> colorAdapter = ArrayAdapter.createFromResource(getContext(),
+                    R.array.color_options, android.R.layout.simple_spinner_item);
+            colorAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            spinnerColor.setAdapter(colorAdapter);
+            spinnerColor.setSelection(0);  // Ensure a default value is selected
 
             builder.setView(dialogView);
             builder.setPositiveButton("Add", (dialog, which) -> {
                 String title = inputTitle.getText().toString().trim();
-                String date = inputDate.getText().toString().trim();
-                String context = inputContext.getText().toString().trim();
                 String location = inputLocation.getText().toString().trim();
+                String dueDate = inputDueDate.getText().toString().trim();
+                String reminder = inputReminder.getText().toString().trim();
+                String smallInfo = inputSmallInfo.getText().toString().trim();
+
+                // Get spinner selections safely, use default values if null
+                String priority = spinnerPriority.getSelectedItem() != null ? spinnerPriority.getSelectedItem().toString() : "Default Priority";
+                String tags = spinnerTags.getSelectedItem() != null ? spinnerTags.getSelectedItem().toString() : "Default Category";
+                String color = spinnerColor.getSelectedItem() != null ? spinnerColor.getSelectedItem().toString() : "#FFFFFF";  // Default white color
 
                 if (!title.isEmpty()) {
-                    // Create a new note
-                    Note newNote = new Note(title, date, context, location);
+                    // Create a new note with the color
+                    Note newNote = new Note(title, location, tags, dueDate, reminder, priority,
+                            color, new ArrayList<>(), smallInfo);  // Pass color to Note constructor
 
                     // Add the note to Firestore
                     notesRef.add(newNote)
@@ -113,7 +146,7 @@ public class MainFragment extends Fragment {
                 for (QueryDocumentSnapshot doc : value) {
                     Note note = doc.toObject(Note.class);
                     note.setId(doc.getId());
-                    Log.d("MainFragment", "Loaded Note: " + note.getTitle() + ", " + note.getDate() + ", " + note.getContext() + ", " + note.getLocation());
+                    Log.d("MainFragment", "Loaded Note: " + note.getTitle() + ", " + note.getDueDate());
                     noteList.add(note);
                 }
                 noteAdapter.notifyDataSetChanged();

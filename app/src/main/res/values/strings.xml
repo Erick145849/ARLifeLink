@@ -1,3 +1,25 @@
 <resources>
     <string name="app_name">ARLifeLink</string>
+    <string-array name="priority_levels">
+        <item>High</item>
+        <item>Medium</item>
+        <item>Low</item>
+    </string-array>
+    <string-array name="categories">
+        <item>Work</item>
+        <item>Personal</item>
+        <item>Shopping</item>
+        <item>Important</item>
+        <item>Other</item>
+    </string-array>
+    <string-array name="color_options">
+        <item>color_red</item> <!-- Referencing color resources -->
+        <item>color_green</item>
+        <item>color_blue</item>
+        <item>color_yellow</item>
+        <item>color_magenta</item>
+        <item>color_cyan</item>
+        <item>color_white</item>
+        <item>color_black</item>
+    </string-array>
 </resources>

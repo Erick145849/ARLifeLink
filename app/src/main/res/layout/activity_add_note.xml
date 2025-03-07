@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:spacing="16dp">
+
+        <!-- Title Input -->
+        <EditText
+            android:id="@+id/titleInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Write your title"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:textSize="18sp"
+            android:background="@drawable/rounded_edittext"/>
+
+        <!-- Tag Spinner -->
+        <Spinner
+            android:id="@+id/tagSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Date Button -->
+        <Button
+            android:id="@+id/dateButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select Date"
+            android:layout_marginBottom="16dp"
+            android:padding="16dp"
+            android:background="@drawable/rounded_button"/>
+
+        <!-- Time Button -->
+        <Button
+            android:id="@+id/timeButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select Time"
+            android:layout_marginBottom="16dp"
+            android:padding="16dp"
+            android:background="@drawable/rounded_button"/>
+
+        <!-- Priority Spinner -->
+        <Spinner
+            android:id="@+id/prioritySpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Color Spinner -->
+        <Spinner
+            android:id="@+id/colorSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Small Info Input -->
+        <EditText
+            android:id="@+id/smallInfoInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Write a short note"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/rounded_edittext"/>
+
+        <!-- Location Text -->
+        <TextView
+            android:id="@+id/locationText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Fetching location..."
+            android:textSize="16sp"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Attachment Button -->
+        <Button
+            android:id="@+id/attachButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Add Attachment"
+            android:layout_marginBottom="32dp"
+            android:padding="16dp"
+            android:background="@drawable/rounded_button"/>
+
+        <Button
+            android:id="@+id/addNoteButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Add Note"
+            android:padding="16dp"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/rounded_button"/>
+
+    </LinearLayout>
+</ScrollView>

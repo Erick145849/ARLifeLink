@@ -31,18 +31,18 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         return new NoteViewHolder(view); // Pass the inflated view to the ViewHolder
     }
 
-
     @Override
     public void onBindViewHolder(NoteViewHolder holder, int position) {
         Note note = noteList.get(position);
 
         // Bind the data from the Note object to the TextViews in the ViewHolder
-        holder.noteTitle.setText(note.getTitle());
-        holder.noteDate.setText(note.getDueDate());
-        holder.noteLocation.setText(note.getLocation());
-        holder.noteCategory.setText(note.getTags());
-        holder.notePriority.setText(note.getPriority());
-        holder.noteSmallInfo.setText(note.getSmallInfo());
+        holder.noteTitle.setText(note.getTitle() != null ? note.getTitle() : "No Title");
+        holder.noteDate.setText(note.getDueDate() != null ? note.getDueDate() : "No Date");
+        holder.noteLocation.setText(note.getLocation() != null ? note.getLocation() : "No Location");
+        holder.noteCategory.setText(note.getTags() != null ? note.getTags() : "No Category");
+        holder.notePriority.setText(note.getPriority() != null ? note.getPriority() : "No Priority");
+        holder.noteSmallInfo.setText(note.getSmallInfo() != null ? note.getSmallInfo() : "No Info");
+
         if (note.getAttachments() != null && !note.getAttachments().isEmpty()) {
             holder.noteAttachments.setText("Attachments: " + note.getAttachments().size());
         } else {
@@ -60,7 +60,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             }
         } else {
             holder.noteColor.setBackgroundColor(Color.GRAY);  // Default color if it's invalid
-        } // Set the background color
+        }
 
         // Set up the delete button
         holder.deleteButton.setOnClickListener(v -> {
@@ -74,7 +74,6 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         return noteList.size();
     }
 
-    // ViewHolder class for binding the note views
     // ViewHolder class for binding the note views
     public class NoteViewHolder extends RecyclerView.ViewHolder {
 

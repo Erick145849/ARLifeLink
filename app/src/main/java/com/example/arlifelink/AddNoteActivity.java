@@ -33,6 +33,7 @@ public class AddNoteActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_note);
 
+        // Initialize UI components
         btnAddNote = findViewById(R.id.addNoteButton);
         titleInput = findViewById(R.id.titleInput);
         smallInfoInput = findViewById(R.id.smallInfoInput);
@@ -51,11 +52,12 @@ public class AddNoteActivity extends AppCompatActivity {
         setupAttachmentButton();
         fetchLocation();
 
+        // Handle adding note
         btnAddNote.setOnClickListener(v -> {
-            // Gather the input data
+            // Gather input data
             String title = titleInput.getText().toString();
             String smallInfo = smallInfoInput.getText().toString();
-            String tag = tagSpinner.getSelectedItem().toString();
+            String tag = (tagSpinner.getSelectedItem() != null) ? tagSpinner.getSelectedItem().toString() : "Default Tag";
             String priority = prioritySpinner.getSelectedItem().toString();
             String color = colorSpinner.getSelectedItem().toString();
             String location = locationText.getText().toString();
@@ -65,7 +67,7 @@ public class AddNoteActivity extends AppCompatActivity {
             // Create a new Note object
             Note newNote = new Note(title, location, tag, dueDate, reminder, priority, color, new ArrayList<>(), smallInfo);
 
-            // Save to Firestore
+            // Save note to Firestore
             FirebaseFirestore db = FirebaseFirestore.getInstance();
             db.collection("notes")
                     .add(newNote)
@@ -81,11 +83,14 @@ public class AddNoteActivity extends AppCompatActivity {
                         // Handle error
                         Toast.makeText(AddNoteActivity.this, "Error adding note", Toast.LENGTH_SHORT).show();
                     });
+            Intent intent = new Intent(AddNoteActivity.this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); // Clear the current activity stack
+            startActivity(intent);  // Start MainActivity and return to MainFragment
         });
-
     }
 
     private void setupDateTimePickers() {
+        // Set up date picker for dateButton
         dateButton.setOnClickListener(v -> {
             DatePickerDialog datePicker = new DatePickerDialog(this,
                     (view, year, month, dayOfMonth) -> {
@@ -98,6 +103,7 @@ public class AddNoteActivity extends AppCompatActivity {
             datePicker.show();
         });
 
+        // Set up time picker for timeButton
         timeButton.setOnClickListener(v -> {
             TimePickerDialog timePicker = new TimePickerDialog(this,
                     (view, hourOfDay, minute) -> {
@@ -113,18 +119,27 @@ public class AddNoteActivity extends AppCompatActivity {
     }
 
     private void setupSpinners() {
+        // Set up spinner for priority options
         ArrayAdapter<CharSequence> priorityAdapter = ArrayAdapter.createFromResource(this,
                 R.array.priority_options, android.R.layout.simple_spinner_item);
         priorityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         prioritySpinner.setAdapter(priorityAdapter);
 
+        // Set up spinner for color options
         ArrayAdapter<CharSequence> colorAdapter = ArrayAdapter.createFromResource(this,
                 R.array.note_colors, android.R.layout.simple_spinner_item);
         colorAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         colorSpinner.setAdapter(colorAdapter);
+
+        // Set up spinner for tags (If you have tags in a string array, otherwise just remove this part)
+        ArrayAdapter<CharSequence> tagAdapter = ArrayAdapter.createFromResource(this,
+                R.array.tag_options, android.R.layout.simple_spinner_item);
+        tagAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        tagSpinner.setAdapter(tagAdapter);
     }
 
     private void setupAttachmentButton() {
+        // Handle attachment button to pick images
         attachButton.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             startActivityForResult(intent, 100);
@@ -140,6 +155,7 @@ public class AddNoteActivity extends AppCompatActivity {
     }
 
     private void fetchLocation() {
+        // Request location permissions and fetch location
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED) {
             fusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {

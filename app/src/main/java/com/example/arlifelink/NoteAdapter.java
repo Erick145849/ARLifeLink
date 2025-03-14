@@ -8,7 +8,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Button;
-import android.widget.LinearLayout;
 
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -36,12 +35,12 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         Note note = noteList.get(position);
 
         // Bind the data from the Note object to the TextViews in the ViewHolder
-        holder.noteTitle.setText(note.getTitle() != null ? note.getTitle() : "No Title");
-        holder.noteDate.setText(note.getDueDate() != null ? note.getDueDate() : "No Date");
-        holder.noteLocation.setText(note.getLocation() != null ? note.getLocation() : "No Location");
-        holder.noteCategory.setText(note.getTags() != null ? note.getTags() : "No Category");
-        holder.notePriority.setText(note.getPriority() != null ? note.getPriority() : "No Priority");
-        holder.noteSmallInfo.setText(note.getSmallInfo() != null ? note.getSmallInfo() : "No Info");
+        holder.noteTitle.setText(note.getTitle() != null ? note.getTitle() : "");
+        holder.noteDate.setText(note.getDueDate() != null ? note.getDueDate() : "");
+        holder.noteLocation.setText(note.getLocation() != null ? note.getLocation() : "");
+        holder.noteCategory.setText(note.getTags() != null ? note.getTags() : "");
+        holder.notePriority.setText(note.getPriority() != null ? note.getPriority() : "");
+        holder.noteSmallInfo.setText(note.getSmallInfo() != null ? note.getSmallInfo() : "");
 
         if (note.getAttachments() != null && !note.getAttachments().isEmpty()) {
             holder.noteAttachments.setText("Attachments: " + note.getAttachments().size());
@@ -55,11 +54,11 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             try {
                 holder.noteColor.setBackgroundColor(Color.parseColor(color));  // Set color to noteColor view
             } catch (IllegalArgumentException e) {
-                Log.e("NoteAdapter", "Invalid color string: " + color);
-                holder.noteColor.setBackgroundColor(Color.GRAY);  // Default color in case of invalid input
+                Log.e("NoteAdapter", "Invalid color string for note with ID " + note.getId() + ": " + color);
+                holder.noteColor.setBackgroundColor(Color.LTGRAY);  // Fallback color for invalid color
             }
         } else {
-            holder.noteColor.setBackgroundColor(Color.GRAY);  // Default color if it's invalid
+            holder.noteColor.setBackgroundColor(Color.LTGRAY);  // Default color if no color or invalid color is provided
         }
 
         // Set up the delete button
@@ -71,7 +70,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
     @Override
     public int getItemCount() {
-        return noteList.size();
+        return noteList.size();  // Return the size of noteList
     }
 
     // ViewHolder class for binding the note views

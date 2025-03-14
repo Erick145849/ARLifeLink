@@ -2,6 +2,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- RecyclerView for displaying the notes -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewNotes"
         android:layout_width="match_parent"
@@ -9,6 +10,7 @@
         android:layout_above="@+id/fabAddNote"
         android:padding="16dp"/>
 
+    <!-- Floating Action Button to add new notes -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddNote"
         android:layout_width="wrap_content"

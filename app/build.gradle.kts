@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.application)  // This should be fine if you have the alias in your `libs.versions.toml`
     id("com.google.gms.google-services")
 }
 
@@ -26,6 +26,13 @@ android {
             )
         }
     }
+    buildFeatures {
+        compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.3.2"
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -33,20 +40,33 @@ android {
 }
 
 dependencies {
+    // Google Play Services
+    implementation("com.google.android.gms:play-services-maps:18.1.0")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation ("com.mapbox.extension:maps-compose:11.10.2")
+    implementation("com.mapbox.maps:android:11.10.2")
+    implementation ("com.mapbox.maps:mapbox-android-plugin-annotation:0.9.0")
+    implementation ("com.mapbox.maps:mapbox-android-sdk:10.0.0")
 
-    implementation ("com.google.android.gms:play-services-maps:18.1.0")
-    implementation ("com.google.android.gms:play-services-location:21.0.1")
+    // Firebase BOM (Bill of Materials)
     implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
     implementation("com.google.firebase:firebase-analytics")
-    implementation ("com.google.firebase:firebase-firestore:24.8.1")
-    implementation ("com.google.android.material:material:1.9.0")
-    implementation ("androidx.fragment:fragment:1.6.1")
-    implementation ("com.google.android.gms:play-services-maps:18.1.0")
+    implementation("com.google.firebase:firebase-firestore:24.8.1")
+    implementation("com.google.firebase:firebase-database:20.2.1")
+    implementation("com.google.firebase:firebase-auth")
+
+    // UI Dependencies
+    implementation("com.google.android.material:material:1.9.0")
+    implementation("androidx.fragment:fragment:1.6.1")
+
+    // AppCompat and other libraries (ensure these are defined in your `libs.versions.toml`)
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
-    implementation(libs.firebase.auth)
+
+    // Testing Dependencies
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

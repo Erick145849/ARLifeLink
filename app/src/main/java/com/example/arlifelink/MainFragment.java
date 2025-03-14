@@ -9,10 +9,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
+
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
@@ -21,6 +23,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+
 import java.util.ArrayList;
 
 public class MainFragment extends Fragment {
@@ -73,25 +76,16 @@ public class MainFragment extends Fragment {
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == REQUEST_CODE_ADD_NOTE && resultCode == getActivity().RESULT_OK && data != null) {
-            // Retrieve data from AddNoteActivity
-            Bundle noteData = data.getExtras();
-            if (noteData != null) {
-                String title = noteData.getString("title");
-                String smallInfo = noteData.getString("smallInfo");
-                String tag = noteData.getString("tag");
-                String priority = noteData.getString("priority");
-                String color = noteData.getString("color");
-                String location = noteData.getString("location");
+            // Retrieve the entire Note object from the Intent
+            Note newNote = (Note) data.getSerializableExtra("newNote"); // Assuming Note implements Serializable
 
-                // Create a new Note object
-                Note newNote = new Note(title, location, tag, "", "", priority, color, null, smallInfo);
-
+            if (newNote != null) {
                 // Add the new note to Firestore
                 notesRef.add(newNote)
                         .addOnSuccessListener(documentReference -> {
-                            newNote.setId(documentReference.getId());
-                            noteList.add(newNote);  // Add to the list
-                            noteAdapter.notifyDataSetChanged();  // Notify the adapter to refresh the list
+                            newNote.setId(documentReference.getId()); // Set the document ID
+                            noteList.add(newNote);  // Add to the local list
+                            noteAdapter.notifyItemInserted(noteList.size() - 1);  // Notify the adapter for the new item
                         })
                         .addOnFailureListener(e -> {
                             Toast.makeText(getContext(), "Error adding note", Toast.LENGTH_SHORT).show();
@@ -99,6 +93,7 @@ public class MainFragment extends Fragment {
             }
         }
     }
+
 
     public void deleteNote(final String noteId) {
         // Show confirmation dialog
@@ -125,10 +120,10 @@ public class MainFragment extends Fragment {
                         for (Note note : noteList) {
                             if (note.getId().equals(noteId)) {
                                 noteList.remove(note);
+                                noteAdapter.notifyItemRemoved(noteList.indexOf(note));  // Notify the adapter to remove the item
                                 break;
                             }
                         }
-                        noteAdapter.notifyDataSetChanged();  // Update the RecyclerView
                     }
                 })
                 .setNegativeButton("No", null)  // Cancel the delete operation
@@ -162,7 +157,7 @@ public class MainFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Reload notes when returning from the AddNoteActivity
+        // Optionally reload notes when returning from AddNoteActivity
         loadNotesFromFirestore();
     }
 }

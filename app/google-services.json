@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "209420871681",
+    "project_id": "arlifelinke",
+    "storage_bucket": "arlifelinke.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:209420871681:android:3c0b05dd1c14fa58ac7800",
+        "android_client_info": {
+          "package_name": "com.example.arlifelink"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCT3YNZ23FmwffP3Mo6XfeD_MqiLKMEPYI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

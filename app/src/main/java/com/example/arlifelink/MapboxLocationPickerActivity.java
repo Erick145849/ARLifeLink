@@ -4,17 +4,14 @@ import static com.mapbox.maps.plugin.gestures.GesturesUtils.getGestures;
 import static com.mapbox.maps.plugin.locationcomponent.LocationComponentUtils.getLocationComponent;
 
 import android.os.Bundle;
-import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.fragment.app.Fragment;
-
+import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.mapbox.android.gestures.MoveGestureDetector;
 import com.mapbox.maps.CameraOptions;
@@ -28,7 +25,7 @@ import com.mapbox.maps.plugin.locationcomponent.LocationComponentPlugin;
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener;
 import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener;
 
-public class MemoriesMapFragment extends Fragment {
+public class MapboxLocationPickerActivity extends AppCompatActivity {
     private MapView mapView;
     private FloatingActionButton floatingActionButton;
 
@@ -37,7 +34,7 @@ public class MemoriesMapFragment extends Fragment {
             new ActivityResultContracts.RequestPermission(), new ActivityResultCallback<Boolean>() {
                 @Override
                 public void onActivityResult(Boolean isGranted) {
-                    Toast.makeText(requireContext(),
+                    Toast.makeText(MapboxLocationPickerActivity.this,
                             isGranted ? "Permission Granted!" : "Permission not granted!",
                             Toast.LENGTH_SHORT).show();
                 }
@@ -77,16 +74,14 @@ public class MemoriesMapFragment extends Fragment {
         @Override
         public void onMoveEnd(@NonNull MoveGestureDetector detector) {}
     };
-    public MemoriesMapFragment() {
-        // Required empty public constructor
-    }
 
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        View view = inflater.inflate(R.layout.fragment_memories_map, container, false);
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_mapbox_location_picker);
 
-        mapView = view.findViewById(R.id.mapView);
-        floatingActionButton = view.findViewById(R.id.focuslocation);
+        mapView = findViewById(R.id.mapView);
+        floatingActionButton = findViewById(R.id.focuslocation);
         floatingActionButton.hide();
 
         mapView.getMapboxMap().loadStyleUri(Style.STANDARD, new Style.OnStyleLoaded() {
@@ -104,7 +99,6 @@ public class MemoriesMapFragment extends Fragment {
         });
 
         locationPermissionRequest.launch(android.Manifest.permission.ACCESS_FINE_LOCATION);
-        return view;
     }
 
     private void initializeLocationComponent() {

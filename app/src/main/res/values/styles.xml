@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light theme (default) -->
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary color for the app -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryDark</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+
+        <!-- Accent color for buttons and other interactive elements -->
+        <item name="colorAccent">@color/colorAccent</item>
+
+        <!-- Background color -->
+        <item name="android:windowBackground">@color/backgroundColor</item>
+
+        <!-- Text color -->
+        <item name="android:textColorPrimary">@color/textColorPrimary</item>
+        <item name="android:textColorSecondary">@color/textColorSecondary</item>
+
+        <!-- Dividers -->
+        <item name="android:divider">@color/dividerColor</item>
+
+    </style>
+    <!-- Dark theme -->
+    <style name="AppTheme.Dark" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="colorPrimary">@color/colorPrimary1</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryDark1</item>
+        <item name="colorOnPrimary">@android:color/black</item>
+
+        <!-- Accent color for buttons and other interactive elements -->
+        <item name="colorAccent">@color/colorAccent1</item>
+
+        <!-- Background color -->
+        <item name="android:windowBackground">@color/backgroundColor1</item>
+
+        <!-- Text color -->
+        <item name="android:textColorPrimary">@color/textColorPrimary1</item>
+        <item name="android:textColorSecondary">@color/textColorSecondary1</item>
+        <item name="android:textColorHint">@color/hintColor1</item>
+
+        <!-- Dividers -->
+        <item name="android:divider">@color/dividerColor1</item>
+    </style>
+</resources>

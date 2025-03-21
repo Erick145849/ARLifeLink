@@ -22,7 +22,7 @@ import java.util.Calendar;
 
 public class AddNoteActivity extends AppCompatActivity {
     private EditText titleInput, smallInfoInput;
-    private Button dateButton, timeButton, attachButton, btnAddNote;
+    private Button dateButton, timeButton, attachButton, btnAddNote, openMapButton;
     private Spinner prioritySpinner, colorSpinner, tagSpinner;
     private TextView locationText;
     private Calendar selectedDateTime;
@@ -46,12 +46,19 @@ public class AddNoteActivity extends AppCompatActivity {
         locationText = findViewById(R.id.locationText);
         selectedDateTime = Calendar.getInstance();
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        openMapButton = findViewById(R.id.locationPicker);
 
         setupDateTimePickers();
         setupSpinners();
         setupAttachmentButton();
         fetchLocation();
-
+        openMapButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(AddNoteActivity.this, MapboxLocationPickerActivity.class);
+                startActivity(intent);
+            }
+        });
         // Handle adding note
         btnAddNote.setOnClickListener(v -> {
             // Gather input data

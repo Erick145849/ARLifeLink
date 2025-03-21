@@ -8,4 +8,20 @@
     <color name="color_cyan">#33FFFF</color>
     <color name="color_white">#FFFFFF</color>
     <color name="color_black">#000000</color>
+    <color name="colorPrimary">#6200EE</color> <!-- Purple -->
+    <color name="colorPrimaryDark">#3700B3</color> <!-- Dark Purple -->
+    <color name="colorAccent">#03DAC5</color> <!-- Cyan/Teal -->
+    <color name="backgroundColor">#FFFFFF</color> <!-- White background -->
+    <color name="textColorPrimary">#000000</color> <!-- Black text -->
+    <color name="textColorSecondary">#6B6B6B</color> <!-- Dark Gray for secondary text -->
+    <color name="dividerColor">#E0E0E0</color> <!-- Light Gray dividers -->
+    <color name="hintColor">#B0B0B0</color> <!-- Light Gray hints -->
+    <color name="colorPrimary1">#BB86FC</color>
+    <color name="colorPrimaryDark1">#3700B3</color>
+    <color name="colorAccent1">#03DAC5</color>
+    <color name="backgroundColor1">#121212</color>
+    <color name="textColorPrimary1">#FFFFFF</color>
+    <color name="textColorSecondary1">#B0B0B0</color>
+    <color name="dividerColor1">#333333</color>
+    <color name="hintColor1">#A0A0A0</color>
 </resources>

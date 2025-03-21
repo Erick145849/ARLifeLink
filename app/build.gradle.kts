@@ -42,13 +42,11 @@ android {
 dependencies {
     // Google Play Services
     implementation("com.google.android.gms:play-services-maps:18.1.0")
+    implementation ("com.github.bumptech.glide:glide:4.12.0")
+    annotationProcessor ("com.github.bumptech.glide:compiler:4.12.0")
     implementation("com.google.android.gms:play-services-base:18.5.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
-    implementation ("com.mapbox.extension:maps-compose:11.10.2")
-    implementation("com.mapbox.maps:android:11.10.2")
-    implementation ("com.mapbox.maps:mapbox-android-plugin-annotation:0.9.0")
-    implementation ("com.mapbox.maps:mapbox-android-sdk:10.0.0")
-
+    implementation("com.mapbox.maps:android:11.10.3")
     // Firebase BOM (Bill of Materials)
     implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
     implementation("com.google.firebase:firebase-analytics")

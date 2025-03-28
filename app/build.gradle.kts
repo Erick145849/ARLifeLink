@@ -44,6 +44,7 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:18.1.0")
     implementation ("com.github.bumptech.glide:glide:4.12.0")
     annotationProcessor ("com.github.bumptech.glide:compiler:4.12.0")
+    implementation ("de.hdodenhof:circleimageview:3.1.0")
     implementation("com.google.android.gms:play-services-base:18.5.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.mapbox.maps:android:11.10.3")

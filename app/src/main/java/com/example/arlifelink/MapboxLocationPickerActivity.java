@@ -3,8 +3,11 @@ package com.example.arlifelink;
 import static com.mapbox.maps.plugin.gestures.GesturesUtils.getGestures;
 import static com.mapbox.maps.plugin.locationcomponent.LocationComponentUtils.getLocationComponent;
 
+import android.content.Intent;
+import android.graphics.PointF;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
@@ -16,6 +19,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.mapbox.android.gestures.MoveGestureDetector;
 import com.mapbox.maps.CameraOptions;
 import com.mapbox.maps.MapView;
+import com.mapbox.maps.ScreenCoordinate;
 import com.mapbox.maps.Style;
 import com.mapbox.maps.plugin.LocationPuck2D;
 import com.mapbox.maps.plugin.gestures.GesturesPlugin;
@@ -28,6 +32,8 @@ import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListen
 public class MapboxLocationPickerActivity extends AppCompatActivity {
     private MapView mapView;
     private FloatingActionButton floatingActionButton;
+    private Button confirmLocationButton;
+    private Point selectedLocation;
 
     // Permission Request
     private final ActivityResultLauncher<String> locationPermissionRequest = registerForActivityResult(
@@ -53,6 +59,7 @@ public class MapboxLocationPickerActivity extends AppCompatActivity {
         public void onIndicatorPositionChanged(@NonNull Point point) {
             mapView.getMapboxMap().setCamera(new CameraOptions.Builder().center(point).zoom(18.0).build());
             getGestures(mapView).setFocalPoint(mapView.getMapboxMap().pixelForCoordinate(point));
+            selectedLocation = point;  // Set selected location to current position
         }
     };
 
@@ -68,11 +75,37 @@ public class MapboxLocationPickerActivity extends AppCompatActivity {
 
         @Override
         public boolean onMove(@NonNull MoveGestureDetector detector) {
+            PointF focalPoint = detector.getFocalPoint();
+
+            // Convert PointF (x, y) to ScreenCoordinate (Mapbox uses ScreenCoordinate for pixel-based calculations)
+            ScreenCoordinate screenCoordinate = new ScreenCoordinate(focalPoint.x, focalPoint.y);
+
+            // Convert the screen coordinates to map coordinates (latitude, longitude)
+            selectedLocation = mapView.getMapboxMap().coordinateForPixel(screenCoordinate);
+            // Update selected location
             return false;
         }
 
         @Override
-        public void onMoveEnd(@NonNull MoveGestureDetector detector) {}
+        public void onMoveEnd(@NonNull MoveGestureDetector detector) {
+            PointF focalPoint = detector.getFocalPoint();
+
+            // Convert PointF (x, y) to ScreenCoordinate (Mapbox uses ScreenCoordinate for pixel-based calculations)
+            ScreenCoordinate screenCoordinate = new ScreenCoordinate(focalPoint.x, focalPoint.y);
+
+            // Convert the screen coordinates to map coordinates (latitude, longitude)
+            selectedLocation = mapView.getMapboxMap().coordinateForPixel(screenCoordinate);
+
+
+            if (selectedLocation != null) {
+                double latitude = selectedLocation.latitude();
+                double longitude = selectedLocation.longitude();
+                Toast.makeText(MapboxLocationPickerActivity.this,
+                        "Location Picked: " + latitude + ", " + longitude,
+                        Toast.LENGTH_SHORT).show();
+            }
+        }
+
     };
 
     @Override
@@ -82,6 +115,8 @@ public class MapboxLocationPickerActivity extends AppCompatActivity {
 
         mapView = findViewById(R.id.mapView);
         floatingActionButton = findViewById(R.id.focuslocation);
+        confirmLocationButton = findViewById(R.id.confirm_location_button); // Button to confirm selection
+
         floatingActionButton.hide();
 
         mapView.getMapboxMap().loadStyleUri(Style.STANDARD, new Style.OnStyleLoaded() {
@@ -95,6 +130,13 @@ public class MapboxLocationPickerActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 resetLocationTracking();
+            }
+        });
+
+        confirmLocationButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                returnSelectedLocation();
             }
         });
 
@@ -116,5 +158,17 @@ public class MapboxLocationPickerActivity extends AppCompatActivity {
         locationComponent.addOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener);
         getGestures(mapView).addOnMoveListener(onMoveListener);
         floatingActionButton.hide();
+    }
+
+    private void returnSelectedLocation() {
+        if (selectedLocation != null) {
+            Intent resultIntent = new Intent();
+            resultIntent.putExtra("latitude", selectedLocation.latitude());
+            resultIntent.putExtra("longitude", selectedLocation.longitude());
+            setResult(RESULT_OK, resultIntent);
+            finish(); // Close the activity and return the result
+        } else {
+            Toast.makeText(this, "No location selected", Toast.LENGTH_SHORT).show();
+        }
     }
 }

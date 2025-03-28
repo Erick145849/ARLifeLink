@@ -54,7 +54,7 @@ public class MainFragment extends Fragment {
 
         // Setup Note List and Adapter
         noteList = new ArrayList<>();
-        noteAdapter = new NoteAdapter(noteList, this);
+        noteAdapter = new NoteAdapter(getContext(), noteList, this);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
         recyclerView.setAdapter(noteAdapter);
 

@@ -4,10 +4,15 @@ import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.location.Location;
+import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.widget.*;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -19,6 +24,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 
 public class AddNoteActivity extends AppCompatActivity {
     private EditText titleInput, smallInfoInput;
@@ -27,6 +33,7 @@ public class AddNoteActivity extends AppCompatActivity {
     private TextView locationText;
     private Calendar selectedDateTime;
     private FusedLocationProviderClient fusedLocationClient;
+    private String attachmentUri = "";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -52,17 +59,20 @@ public class AddNoteActivity extends AppCompatActivity {
         setupSpinners();
         setupAttachmentButton();
         fetchLocation();
+
         openMapButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(AddNoteActivity.this, MapboxLocationPickerActivity.class);
-                startActivity(intent);
+                startActivityForResult(intent, 200);
             }
         });
+
         // Handle adding note
         btnAddNote.setOnClickListener(v -> {
             // Gather input data
-            String title = titleInput.getText().toString();
+            String title = titleInput.getText().toString().trim();
+            if (title.isEmpty()) title = "Untitled";
             String smallInfo = smallInfoInput.getText().toString();
             String tag = (tagSpinner.getSelectedItem() != null) ? tagSpinner.getSelectedItem().toString() : "Default Tag";
             String priority = prioritySpinner.getSelectedItem().toString();
@@ -72,7 +82,7 @@ public class AddNoteActivity extends AppCompatActivity {
             String reminder = timeButton.getText().toString(); // Use the selected time
 
             // Create a new Note object
-            Note newNote = new Note(title, location, tag, dueDate, reminder, priority, color, new ArrayList<>(), smallInfo);
+            Note newNote = new Note(title, location, tag, dueDate, reminder, priority, color, attachmentUri, smallInfo);
 
             // Save note to Firestore
             FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -153,11 +163,17 @@ public class AddNoteActivity extends AppCompatActivity {
         });
     }
 
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
+            attachmentUri = data.getData().toString();  // Get the URI of the picked image
             Toast.makeText(this, "Attachment added successfully!", Toast.LENGTH_SHORT).show();
+        }
+        else if (requestCode == 200 && resultCode == RESULT_OK && data != null) {
+            String pickedLocation = data.getStringExtra("selected_location");
+            locationText.setText(pickedLocation);
         }
     }
 

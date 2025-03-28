@@ -1,13 +1,22 @@
 package com.example.arlifelink;
 
+import static androidx.core.content.ContextCompat.startActivity;
+
 import android.annotation.SuppressLint;
+import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.os.Environment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -15,14 +24,17 @@ import java.util.ArrayList;
 
 public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder> {
 
+    private Context context;
     private ArrayList<Note> noteList;
     private MainFragment mainFragment; // Reference to MainFragment to access deleteNote method
 
     // Constructor
-    public NoteAdapter(ArrayList<Note> notes, MainFragment mainFragment) {
+    public NoteAdapter(Context context, ArrayList<Note> notes, MainFragment mainFragment) {
+        this.context = context;
         this.noteList = notes;
         this.mainFragment = mainFragment; // Pass MainFragment reference
     }
+
 
     @Override
     public NoteViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -42,23 +54,35 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         holder.notePriority.setText(note.getPriority() != null ? note.getPriority() : "");
         holder.noteSmallInfo.setText(note.getSmallInfo() != null ? note.getSmallInfo() : "");
 
-        if (note.getAttachments() != null && !note.getAttachments().isEmpty()) {
-            holder.noteAttachments.setText("Attachments: " + note.getAttachments().size());
-        } else {
-            holder.noteAttachments.setText("No attachments");
-        }
 
-        // Set color dynamically
+        holder.viewAttachmentsButton.setVisibility(View.VISIBLE);
+        holder.viewAttachmentsButton.setOnClickListener(v -> {
+            String attachmentUriString = note.getAttachment();
+
+            if (attachmentUriString != null && !attachmentUriString.isEmpty()) {
+                Intent intent = new Intent(context, AttachmentViewerActivity.class);
+                intent.putExtra("attachmentUri", attachmentUriString);
+                context.startActivity(intent);
+            } else {
+                Toast.makeText(context, "No attachment found!", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+
+
+        // Set dynamic background color with rounded corners
+        GradientDrawable background = (GradientDrawable) holder.itemView.getBackground();
         String color = note.getColor();
+
         if (color != null && !color.equals("0") && !color.isEmpty()) {
             try {
-                holder.noteColor.setBackgroundColor(Color.parseColor(color));  // Set color to noteColor view
+                background.setColor(Color.parseColor(color));  // Apply note color
             } catch (IllegalArgumentException e) {
-                Log.e("NoteAdapter", "Invalid color string for note with ID " + note.getId() + ": " + color);
-                holder.noteColor.setBackgroundColor(Color.LTGRAY);  // Fallback color for invalid color
+                Log.e("NoteAdapter", "Invalid color for note ID " + note.getId() + ": " + color);
+                background.setColor(Color.LTGRAY);  // Default fallback color
             }
         } else {
-            holder.noteColor.setBackgroundColor(Color.LTGRAY);  // Default color if no color or invalid color is provided
+            background.setColor(Color.LTGRAY);  // Default if no color provided
         }
 
         // Set up the delete button
@@ -67,6 +91,11 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             mainFragment.deleteNote(note.getId());
         });
     }
+
+    private Context getContext() {
+        return this.context;
+    }
+
 
     @Override
     public int getItemCount() {
@@ -77,20 +106,24 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
     public class NoteViewHolder extends RecyclerView.ViewHolder {
 
         TextView noteTitle, noteDate, noteCategory, notePriority, noteLocation, noteSmallInfo, noteAttachments;
-        Button deleteButton;
+        Button deleteButton, viewAttachmentsButton;
         View noteColor; // Change to View instead of LinearLayout
+        public ImageView attachmentImageView;
 
         @SuppressLint("WrongViewCast")
         public NoteViewHolder(View itemView) {
             super(itemView);
             noteTitle = itemView.findViewById(R.id.textTitle);
             noteDate = itemView.findViewById(R.id.textDate);
+            noteLocation = itemView.findViewById(R.id.textLocation);
             noteCategory = itemView.findViewById(R.id.textCategory);
             notePriority = itemView.findViewById(R.id.textPriority);
-            noteLocation = itemView.findViewById(R.id.textLocation);
             noteSmallInfo = itemView.findViewById(R.id.textSmallInfo);
-            noteAttachments = itemView.findViewById(R.id.textAttachments);
-            noteColor = itemView.findViewById(R.id.noteColor); // noteColor is now a View
+
+            // Make sure to initialize the viewAttachmentsButton
+            viewAttachmentsButton = itemView.findViewById(R.id.viewAttachmentsButton);  // This should match the ID in the layout
+
+            // Initialize the delete button
             deleteButton = itemView.findViewById(R.id.delete_button);
         }
     }

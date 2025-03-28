@@ -1,5 +1,7 @@
 package com.example.arlifelink;
 
+import android.net.Uri;
+
 import java.util.List;
 
 public class Note {
@@ -11,14 +13,14 @@ public class Note {
     private String reminder;  // Reminder time (could be in timestamp or String format)
     private String priority;  // Priority Level (e.g., High, Medium, Low)
     private String color;  // Color for customization (e.g., color code for UI)
-    private List<String> attachments;  // List for attachment links or file paths
+    private String attachment;  // List for attachment links or file paths
     private String smallInfo;  // Additional small info about the note
 
     // Required empty constructor for Firestore
     public Note() {}
 
     public Note(String title, String location, String tags, String dueDate,
-                String reminder, String priority, String color, List<String> attachments, String smallInfo) {
+                String reminder, String priority, String color, String attachment, String smallInfo) {
         this.title = title;
         this.location = location;
         this.tags = tags;
@@ -26,7 +28,7 @@ public class Note {
         this.reminder = reminder;
         this.priority = priority;
         this.color = color;
-        this.attachments = attachments;
+        this.attachment = attachment;
         this.smallInfo = smallInfo;
     }
 
@@ -95,12 +97,12 @@ public class Note {
         this.color = color;
     }
 
-    public List<String> getAttachments() {
-        return attachments;
+    public String  getAttachment() {
+        return attachment;
     }
 
-    public void setAttachments(List<String> attachments) {
-        this.attachments = attachments;
+    public void setAttachment(String attachment) {
+        this.attachment = attachment;
     }
 
     public String getSmallInfo() {

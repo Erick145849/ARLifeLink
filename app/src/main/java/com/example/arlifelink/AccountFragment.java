@@ -26,6 +26,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.RequestOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -227,9 +228,10 @@ public class AccountFragment extends Fragment {
     private void loadProfileImage(FirebaseUser user) {
         if (user.getPhotoUrl() != null) {
             // If the user has a photo, load it into the ImageView
-            Glide.with(getContext())
+            Glide.with(this)
                     .load(user.getPhotoUrl())
                     .into(profileImageView);
+
         } else {
             // Set a default image if the user doesn't have a profile photo
             profileImageView.setImageResource(R.drawable.default_profile);

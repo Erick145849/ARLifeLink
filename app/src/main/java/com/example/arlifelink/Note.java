@@ -2,19 +2,22 @@ package com.example.arlifelink;
 
 import android.net.Uri;
 
+import java.io.Serializable;
+import java.util.Date;
 import java.util.List;
 
-public class Note {
+public class Note implements Serializable {
     private String id;
     private String title;
     private String location;
+    private String dueDate;
     private String tags;  // Tags or Categories
-    private String dueDate;  // Due Date (String or Timestamp)
     private String reminder;  // Reminder time (could be in timestamp or String format)
     private String priority;  // Priority Level (e.g., High, Medium, Low)
     private String color;  // Color for customization (e.g., color code for UI)
     private String attachment;  // List for attachment links or file paths
     private String smallInfo;  // Additional small info about the note
+    private boolean flagged;
 
     // Required empty constructor for Firestore
     public Note() {}
@@ -30,6 +33,7 @@ public class Note {
         this.color = color;
         this.attachment = attachment;
         this.smallInfo = smallInfo;
+        this.flagged = false;
     }
 
     // Getters and Setters
@@ -71,6 +75,13 @@ public class Note {
 
     public void setDueDate(String dueDate) {
         this.dueDate = dueDate;
+    }
+
+    public boolean isFlagged() {
+        return flagged;
+    }
+    public void setFlagged(boolean flagged) {
+        this.flagged = flagged;
     }
 
     public String getReminder() {

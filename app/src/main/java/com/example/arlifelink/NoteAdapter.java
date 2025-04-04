@@ -21,15 +21,16 @@ import android.widget.Toast;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder> {
 
     private Context context;
-    private ArrayList<Note> noteList;
+    private List<Note> noteList;
     private MainFragment mainFragment; // Reference to MainFragment to access deleteNote method
 
     // Constructor
-    public NoteAdapter(Context context, ArrayList<Note> notes, MainFragment mainFragment) {
+    public NoteAdapter(Context context, List<Note> notes, MainFragment mainFragment) {
         this.context = context;
         this.noteList = notes;
         this.mainFragment = mainFragment; // Pass MainFragment reference
@@ -48,12 +49,16 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
         // Bind the data from the Note object to the TextViews in the ViewHolder
         holder.noteTitle.setText(note.getTitle() != null ? note.getTitle() : "");
-        holder.noteDate.setText(note.getDueDate() != null ? note.getDueDate() : "");
+        holder.noteDate.setText(note.getDueDate() != null ? (CharSequence) note.getDueDate() : "");
         holder.noteLocation.setText(note.getLocation() != null ? note.getLocation() : "");
         holder.noteCategory.setText(note.getTags() != null ? note.getTags() : "");
         holder.notePriority.setText(note.getPriority() != null ? note.getPriority() : "");
         holder.noteSmallInfo.setText(note.getSmallInfo() != null ? note.getSmallInfo() : "");
-
+        if (note.isFlagged()) {
+            holder.flagIcon.setVisibility(View.VISIBLE);
+        } else {
+            holder.flagIcon.setVisibility(View.GONE);
+        }
 
         holder.viewAttachmentsButton.setVisibility(View.VISIBLE);
         holder.viewAttachmentsButton.setOnClickListener(v -> {
@@ -107,6 +112,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
 
         TextView noteTitle, noteDate, noteCategory, notePriority, noteLocation, noteSmallInfo, noteAttachments;
         Button deleteButton, viewAttachmentsButton;
+        ImageView flagIcon;
         View noteColor; // Change to View instead of LinearLayout
         public ImageView attachmentImageView;
 
@@ -119,6 +125,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             noteCategory = itemView.findViewById(R.id.textCategory);
             notePriority = itemView.findViewById(R.id.textPriority);
             noteSmallInfo = itemView.findViewById(R.id.textSmallInfo);
+            flagIcon = itemView.findViewById(R.id.flagIcon);
 
             // Make sure to initialize the viewAttachmentsButton
             viewAttachmentsButton = itemView.findViewById(R.id.viewAttachmentsButton);  // This should match the ID in the layout

@@ -148,8 +148,10 @@ public class MainFragment extends Fragment {
                     Log.d("MainFragment", "Loaded Note: " + note.getTitle());
                     noteList.add(note);
                 }
+                NoteAnalyzer.analyzeNotes(noteList);
                 // Notify the adapter to update the RecyclerView
                 noteAdapter.notifyDataSetChanged();
+
             }
         });
     }

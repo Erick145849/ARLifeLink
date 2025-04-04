@@ -1,30 +1,36 @@
 package com.example.arlifelink;
 
+import android.app.AlarmManager;
 import android.app.DatePickerDialog;
+import android.app.PendingIntent;
 import android.app.TimePickerDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
-import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.view.View;
-import android.widget.*;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-import java.util.ArrayList;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.List;
+import java.util.Date;
+import java.util.Locale;
 
 public class AddNoteActivity extends AppCompatActivity {
     private EditText titleInput, smallInfoInput;
@@ -60,6 +66,7 @@ public class AddNoteActivity extends AppCompatActivity {
         setupAttachmentButton();
         fetchLocation();
 
+        // Open Mapbox location picker when the button is clicked
         openMapButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -69,45 +76,74 @@ public class AddNoteActivity extends AppCompatActivity {
         });
 
         // Handle adding note
-        btnAddNote.setOnClickListener(v -> {
-            // Gather input data
-            String title = titleInput.getText().toString().trim();
-            if (title.isEmpty()) title = "Untitled";
-            String smallInfo = smallInfoInput.getText().toString();
-            String tag = (tagSpinner.getSelectedItem() != null) ? tagSpinner.getSelectedItem().toString() : "Default Tag";
-            String priority = prioritySpinner.getSelectedItem().toString();
-            String color = colorSpinner.getSelectedItem().toString();
-            String location = locationText.getText().toString();
-            String dueDate = dateButton.getText().toString(); // Use the selected date
-            String reminder = timeButton.getText().toString(); // Use the selected time
+        btnAddNote.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
 
-            // Create a new Note object
-            Note newNote = new Note(title, location, tag, dueDate, reminder, priority, color, attachmentUri, smallInfo);
+                String title = titleInput.getText().toString().trim();
+                if (title.isEmpty()) title = "Untitled";
+                String smallInfo = smallInfoInput.getText().toString();
+                String tag = (tagSpinner.getSelectedItem() != null) ? tagSpinner.getSelectedItem().toString() : "Default Tag";
+                String priority = prioritySpinner.getSelectedItem().toString();
+                String color = colorSpinner.getSelectedItem().toString();
+                String location = locationText.getText().toString();
+                String dueDate = dateButton.getText().toString() + " " + timeButton.getText().toString();
+                String reminder = timeButton.getText().toString();
 
-            // Save note to Firestore
-            FirebaseFirestore db = FirebaseFirestore.getInstance();
-            db.collection("notes")
-                    .add(newNote)
-                    .addOnSuccessListener(documentReference -> {
-                        // Successfully added the note
-                        Toast.makeText(AddNoteActivity.this, "Note added", Toast.LENGTH_SHORT).show();
+                // Create a new Note object.
+                // Make sure your Note class implements Serializable or Parcelable.
+                Note newNote = new Note(title, location, tag, dueDate, reminder, priority, color, attachmentUri, smallInfo);
 
-                        // After successfully adding, return to MainFragment and load the notes
-                        setResult(RESULT_OK);
-                        finish();
-                    })
-                    .addOnFailureListener(e -> {
-                        // Handle error
-                        Toast.makeText(AddNoteActivity.this, "Error adding note", Toast.LENGTH_SHORT).show();
-                    });
-            Intent intent = new Intent(AddNoteActivity.this, MainActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); // Clear the current activity stack
-            startActivity(intent);  // Start MainActivity and return to MainFragment
+                // Save note to Firestore and finish AddNoteActivity.
+                FirebaseFirestore db = FirebaseFirestore.getInstance();
+                db.collection("notes")
+                        .add(newNote)
+                        .addOnSuccessListener(documentReference -> {
+                            // Optionally, set the document ID in the note if needed.
+                            newNote.setId(documentReference.getId());
+                            Toast.makeText(AddNoteActivity.this, "Note added", Toast.LENGTH_SHORT).show();
+                            scheduleNotification(newNote);
+
+                            // Return to MainFragment.
+                            setResult(RESULT_OK);
+                            finish();
+                        })
+                        .addOnFailureListener(e -> {
+                            Toast.makeText(AddNoteActivity.this, "Error adding note", Toast.LENGTH_SHORT).show();
+                        });
+                Intent resultIntent = new Intent();
+                setResult(RESULT_OK, resultIntent);
+                finish();
+            }
         });
+    }
+    private void scheduleNotification(Note note) {
+        // Prepare AlarmManager and PendingIntent for notification
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, NotificationReceiver.class);
+        intent.putExtra("noteTitle", note.getTitle());
+        intent.putExtra("noteMessage", "Your note is scheduled at " + note.getDueDate());
+
+        // Use a unique request code (e.g., hash code of note ID or current time)
+        int requestCode = (int) System.currentTimeMillis();
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, requestCode, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        // Parse due date string: expected format "dd/MM/yyyy HH:mm"
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
+        try {
+            Date dueDate = sdf.parse(note.getDueDate());
+            if (dueDate != null) {
+                long triggerTime = dueDate.getTime() - 3600000L; // 1 hour before due date
+                // Schedule the alarm
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
     }
 
     private void setupDateTimePickers() {
-        // Set up date picker for dateButton
         dateButton.setOnClickListener(v -> {
             DatePickerDialog datePicker = new DatePickerDialog(this,
                     (view, year, month, dayOfMonth) -> {
@@ -120,7 +156,6 @@ public class AddNoteActivity extends AppCompatActivity {
             datePicker.show();
         });
 
-        // Set up time picker for timeButton
         timeButton.setOnClickListener(v -> {
             TimePickerDialog timePicker = new TimePickerDialog(this,
                     (view, hourOfDay, minute) -> {
@@ -136,19 +171,16 @@ public class AddNoteActivity extends AppCompatActivity {
     }
 
     private void setupSpinners() {
-        // Set up spinner for priority options
         ArrayAdapter<CharSequence> priorityAdapter = ArrayAdapter.createFromResource(this,
                 R.array.priority_options, android.R.layout.simple_spinner_item);
         priorityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         prioritySpinner.setAdapter(priorityAdapter);
 
-        // Set up spinner for color options
         ArrayAdapter<CharSequence> colorAdapter = ArrayAdapter.createFromResource(this,
                 R.array.note_colors, android.R.layout.simple_spinner_item);
         colorAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         colorSpinner.setAdapter(colorAdapter);
 
-        // Set up spinner for tags (If you have tags in a string array, otherwise just remove this part)
         ArrayAdapter<CharSequence> tagAdapter = ArrayAdapter.createFromResource(this,
                 R.array.tag_options, android.R.layout.simple_spinner_item);
         tagAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -156,37 +188,37 @@ public class AddNoteActivity extends AppCompatActivity {
     }
 
     private void setupAttachmentButton() {
-        // Handle attachment button to pick images
         attachButton.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             startActivityForResult(intent, 100);
         });
     }
 
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        // Handle image attachment result
         if (requestCode == 100 && resultCode == RESULT_OK && data != null) {
-            attachmentUri = data.getData().toString();  // Get the URI of the picked image
+            attachmentUri = data.getData().toString();
             Toast.makeText(this, "Attachment added successfully!", Toast.LENGTH_SHORT).show();
         }
+        // Handle location picker result
         else if (requestCode == 200 && resultCode == RESULT_OK && data != null) {
-            String pickedLocation = data.getStringExtra("selected_location");
+            double latitude = data.getDoubleExtra("latitude", 0.0);
+            double longitude = data.getDoubleExtra("longitude", 0.0);
+            String address = data.getStringExtra("address");
+            String pickedLocation = address + " (Lat: " + latitude + ", Lng: " + longitude + ")";
             locationText.setText(pickedLocation);
         }
     }
 
     private void fetchLocation() {
-        // Request location permissions and fetch location
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            fusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
-                @Override
-                public void onSuccess(Location location) {
-                    if (location != null) {
-                        locationText.setText("Lat: " + location.getLatitude() + ", Lng: " + location.getLongitude());
-                    }
+            fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
+                if (location != null) {
+                    locationText.setText("Lat: " + location.getLatitude() + ", Lng: " + location.getLongitude());
                 }
             });
         } else {

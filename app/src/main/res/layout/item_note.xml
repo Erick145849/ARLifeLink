@@ -5,7 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/note_background"
-    android:padding="8dp">
+    android:padding="8dp"
+    android:layout_margin="8dp">
 
     <!-- Title of the note -->
     <TextView
@@ -20,6 +21,16 @@
         app:layout_constraintTop_toTopOf="parent"/>
 
     <!-- Date, Location, Category, Priority, Small Info, and Attachments -->
+    <ImageView
+        android:id="@+id/flagIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/ic_exclamation"
+        android:contentDescription="Flagged Note"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
     <LinearLayout
         android:id="@+id/detailsLayout"
         android:orientation="vertical"

@@ -1,5 +1,7 @@
 package com.example.arlifelink;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -23,7 +25,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        createNotificationChannel();
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_navigation);
 
         // Load default fragment
@@ -55,4 +57,16 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
     }
+    private void createNotificationChannel() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            CharSequence name = "Note Notifications";
+            String description = "Notifications for upcoming notes";
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(NotificationReceiver.CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
 }

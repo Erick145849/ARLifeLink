@@ -59,6 +59,10 @@ dependencies {
     implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.fragment:fragment:1.6.1")
 
+    //AR
+    implementation ("pub.devrel:easypermissions:3.0.0")
+    implementation ("com.github.SeptiawanAjiP:AugmentedReality-LocationBased:")
+
     // AppCompat and other libraries (ensure these are defined in your `libs.versions.toml`)
     implementation(libs.appcompat)
     implementation(libs.material)

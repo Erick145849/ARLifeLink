@@ -1,20 +1,35 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/text_main"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="AR Page"
-        android:textSize="24sp"
-        android:layout_centerInParent="true"/>
+    <android.opengl.GLSurfaceView
+        android:id="@+id/surfaceview"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_gravity="top" />
 
-    <Button
-        android:id="@+id/ARbutton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Welcome to AR"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="50dp"/>
+    <com.google.ar.core.codelabs.hellogeospatial.helpers.MapTouchWrapper
+        android:id="@+id/map_wrapper"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:layout_alignParentBottom="true">
+
+        <fragment
+            android:id="@+id/map"
+            android:name="com.google.android.gms.maps.SupportMapFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:context=".HelloGeoActivity" />
+        <TextView
+            android:padding="8dp"
+            android:textColor="@android:color/black"
+            android:background="#AAFFFFFF"
+            android:layout_width="wrap_content"
+            android:fontFamily="monospace"
+            android:layout_height="wrap_content"
+            android:id="@+id/statusText"
+            />
+    </com.google.ar.core.codelabs.hellogeospatial.helpers.MapTouchWrapper>
+
 </RelativeLayout>

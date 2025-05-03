@@ -15,7 +15,13 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <meta-data
+        android:name="com.google.android.ar.API_KEY"
+        android:value="AIzaSyBUJ6paiGI7llezUWL3GuQl3_2k3axp9eQ" />
 
+    <meta-data
+        android:name="com.google.android.geo.API_KEY"
+        android:value="AIzaSyBUJ6paiGI7llezUWL3GuQl3_2k3axp9eQ" />
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

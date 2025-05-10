@@ -1,0 +1,26 @@
+# geospatial_marker.mtl
+
+# Material name must match the OBJ’s usemtl
+newmtl MarkerSG1
+
+# Ambient reflectivity (RGB)
+Ka 0.200 0.200 0.200
+
+# Diffuse reflectivity (RGB)
+Kd 0.800 0.800 0.800
+
+# Specular reflectivity (RGB)
+Ks 0.000 0.000 0.000
+
+# Specular exponent (shininess)
+Ns 10.000
+
+# Opacity (1.0 = fully opaque)
+d 1.0
+
+# Illumination model (2 = diffuse+specular)
+illum 2
+
+# The texture file to map onto the diffuse channel
+# (must also live in assets/models/)
+map_Kd spatial_marker_baked.png

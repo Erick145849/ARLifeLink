@@ -59,6 +59,9 @@ dependencies {
     implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.fragment:fragment:1.6.1")
 
+    //AR
+    implementation("com.google.ar:core:1.31.0")
+    implementation ("de.javagl:obj:0.4.0")
     // AppCompat and other libraries (ensure these are defined in your `libs.versions.toml`)
     implementation(libs.appcompat)
     implementation(libs.material)

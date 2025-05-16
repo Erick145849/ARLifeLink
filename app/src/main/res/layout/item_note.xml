@@ -8,16 +8,23 @@
     android:padding="8dp">
 
     <!-- Title of the note -->
-    <TextView
+    <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/textTitle"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:textStyle="bold"
-        android:textSize="18sp"
+        android:layout_margin="8dp"
         android:text="Note Title"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="24sp"
+        android:autoSizeStepGranularity="2sp"
+        />
+
 
     <!-- Date, Location, Category, Priority, Small Info, and Attachments -->
     <LinearLayout
@@ -29,53 +36,72 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/textDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:text="Due Date"
             android:textColor="@android:color/darker_gray"
-            android:text="Due Date"/>
+            android:autoSizeTextType="uniform"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeMaxTextSize="12sp"
+            android:autoSizeStepGranularity="1sp" />
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/textLocation"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:text="Location"
             android:textColor="@android:color/darker_gray"
-            android:text="Location"/>
+            android:autoSizeTextType="uniform"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeMaxTextSize="12sp"
+            android:autoSizeStepGranularity="1sp" />
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/textCategory"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:text="Category"
             android:textColor="@android:color/darker_gray"
-            android:text="Category"/>
+            android:autoSizeTextType="uniform"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeMaxTextSize="12sp"
+            android:autoSizeStepGranularity="1sp" />
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/textPriority"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:text="Priority"
             android:textColor="@android:color/darker_gray"
-            android:text="Priority"/>
+            android:autoSizeTextType="uniform"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeMaxTextSize="12sp"
+            android:autoSizeStepGranularity="1sp" />
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/textSmallInfo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:text="Info"
             android:textColor="@android:color/darker_gray"
-            android:text="Info"/>
+            android:autoSizeTextType="uniform"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeMaxTextSize="12sp"
+            android:autoSizeStepGranularity="1sp" />
 
-        <TextView
+        <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/textAttachments"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:text="Attachments"
             android:textColor="@android:color/darker_gray"
-            android:text="Attachments"/>
+            android:autoSizeTextType="uniform"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeMaxTextSize="12sp"
+            android:autoSizeStepGranularity="1sp" />
+
     </LinearLayout>
 
     <!-- Delete Button -->

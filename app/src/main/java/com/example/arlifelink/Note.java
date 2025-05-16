@@ -15,7 +15,7 @@ public class Note {
     private String color;  // Color for customization (e.g., color code for UI)
     private String attachment;  // List for attachment links or file paths
     private String smallInfo;  // Additional small info about the note
-
+    List<String> sharedWith;
     // Required empty constructor for Firestore
     public Note() {}
 

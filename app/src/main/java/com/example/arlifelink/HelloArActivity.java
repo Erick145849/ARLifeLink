@@ -16,7 +16,9 @@
 
 package com.example.arlifelink;
 
+import com.google.ar.core.exceptions.NotTrackingException;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.media.Image;
 import android.opengl.GLES30;
@@ -47,6 +49,7 @@ import com.google.ar.core.Plane;
 import com.google.ar.core.Point;
 import com.google.ar.core.Point.OrientationMode;
 import com.google.ar.core.PointCloud;
+import com.google.ar.core.Pose;
 import com.google.ar.core.Session;
 import com.google.ar.core.Trackable;
 import com.google.ar.core.TrackingFailureReason;
@@ -81,7 +84,10 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * This is a simple example that shows how to create an augmented reality (AR) application using the
@@ -90,6 +96,7 @@ import java.util.List;
  */
 public class HelloArActivity extends AppCompatActivity implements SampleRender.Renderer {
 
+  private boolean anchorsLoaded = false;
   private static final String TAG = HelloArActivity.class.getSimpleName();
 
   private static final String SEARCHING_PLANE_MESSAGE = "Searching for surfaces...";
@@ -305,7 +312,6 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       session = null;
       return;
     }
-
     surfaceView.onResume();
     displayRotationHelper.onResume();
   }
@@ -489,6 +495,10 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     }
     Camera camera = frame.getCamera();
 
+    if (!anchorsLoaded && camera.getTrackingState() == TrackingState.TRACKING) {
+      loadSavedAnchors();
+      anchorsLoaded = true;
+    }
     // Update BackgroundRenderer state to match the depth settings.
     try {
       backgroundRenderer.setUseDepthVisualization(
@@ -658,7 +668,11 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
           // Adding an Anchor tells ARCore that it should track this position in
           // space. This anchor is created on the Plane to place the 3D model
           // in the correct position relative both to the world and to the plane.
-          wrappedAnchors.add(new WrappedAnchor(hit.createAnchor(), trackable));
+          // 1. Create & render the local anchor immediately
+          Anchor localAnchor = hit.createAnchor();
+          wrappedAnchors.add(new WrappedAnchor(localAnchor, trackable));
+          saveAnchorPose(localAnchor);
+
           // For devices that support the Depth API, shows a dialog to suggest enabling
           // depth-based occlusion. This dialog needs to be spawned on the UI thread.
           this.runOnUiThread(this::showOcclusionDialogIfNeeded);
@@ -670,6 +684,47 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       }
     }
   }
+
+  // Save a single Anchor’s pose (translation + rotation) into SharedPreferences as a small CSV string
+  private void saveAnchorPose(Anchor anchor) {
+    Pose p = anchor.getPose();
+    float[] t = p.getTranslation();
+    float[] q = p.getRotationQuaternion();
+    // Format: "tx,ty,tz,qx,qy,qz,qw"
+    String csv = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f",
+            t[0], t[1], t[2], q[0], q[1], q[2], q[3]);
+    SharedPreferences prefs = getSharedPreferences("arlifelink", MODE_PRIVATE);
+    Set<String> set = new HashSet<>(prefs.getStringSet("anchors", new HashSet<>()));
+    set.add(csv);
+    prefs.edit().putStringSet("anchors", set).apply();
+  }
+
+  // Read back all saved poses and re-create Anchors
+  private void loadSavedAnchors() {
+    SharedPreferences prefs = getSharedPreferences("arlifelink", MODE_PRIVATE);
+    Set<String> set = prefs.getStringSet("anchors", new HashSet<>());
+    for (String csv : set) {
+      String[] parts = csv.split(",");
+      try {
+        float tx = Float.parseFloat(parts[0]);
+        float ty = Float.parseFloat(parts[1]);
+        float tz = Float.parseFloat(parts[2]);
+        float qx = Float.parseFloat(parts[3]);
+        float qy = Float.parseFloat(parts[4]);
+        float qz = Float.parseFloat(parts[5]);
+        float qw = Float.parseFloat(parts[6]);
+        Pose pose = new Pose(
+                new float[]{tx, ty, tz},
+                new float[]{qx, qy, qz, qw}
+        );
+        Anchor restored = session.createAnchor(pose);
+        wrappedAnchors.add(new WrappedAnchor(restored, null));
+      } catch (NotTrackingException | NumberFormatException e) {
+        // session not tracking yet or bad data → skip this anchor for now
+      }
+    }
+  }
+
 
   /**
    * Shows a pop-up dialog on the first call, determining whether the user wants to enable

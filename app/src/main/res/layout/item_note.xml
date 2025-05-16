@@ -100,7 +100,18 @@
             android:padding="8dp"
             android:textSize="14sp"
             android:visibility="gone"/>
-
+        <Button
+            android:id="@+id/shareButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Share"
+            android:layout_marginTop="8dp"
+            android:layout_marginRight="20dp"
+            android:minWidth="40dp"
+            android:minHeight="40dp"
+            android:padding="8dp"
+            android:textSize="14sp"
+            android:visibility="gone"/>
         <Button
             android:id="@+id/delete_button"
             android:layout_width="wrap_content"
@@ -113,5 +124,6 @@
             android:textSize="14sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/detailsLayout" />
+
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

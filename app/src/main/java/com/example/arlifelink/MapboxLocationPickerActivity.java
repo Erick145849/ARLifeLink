@@ -1,174 +1,215 @@
 package com.example.arlifelink;
 
-import static com.mapbox.maps.plugin.gestures.GesturesUtils.getGestures;
-import static com.mapbox.maps.plugin.locationcomponent.LocationComponentUtils.getLocationComponent;
-
+import android.Manifest;
+import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.graphics.PointF;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Bundle;
-import android.view.View;
+import android.os.Looper;
 import android.widget.Button;
 import android.widget.Toast;
-import androidx.activity.result.ActivityResultCallback;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import android.animation.ValueAnimator;
+import com.google.android.gms.maps.model.LatLng;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.mapbox.android.gestures.MoveGestureDetector;
-import com.mapbox.maps.CameraOptions;
-import com.mapbox.maps.MapView;
-import com.mapbox.maps.ScreenCoordinate;
-import com.mapbox.maps.Style;
-import com.mapbox.maps.plugin.LocationPuck2D;
-import com.mapbox.maps.plugin.gestures.GesturesPlugin;
-import com.mapbox.geojson.Point;
-import com.mapbox.maps.plugin.gestures.OnMoveListener;
-import com.mapbox.maps.plugin.locationcomponent.LocationComponentPlugin;
-import com.mapbox.maps.plugin.locationcomponent.OnIndicatorBearingChangedListener;
-import com.mapbox.maps.plugin.locationcomponent.OnIndicatorPositionChangedListener;
 
-public class MapboxLocationPickerActivity extends AppCompatActivity {
-    private MapView mapView;
-    private FloatingActionButton floatingActionButton;
-    private Button confirmLocationButton;
-    private Point selectedLocation;
+public class MapboxLocationPickerActivity extends AppCompatActivity implements OnMapReadyCallback {
 
-    // Permission Request
-    private final ActivityResultLauncher<String> locationPermissionRequest = registerForActivityResult(
-            new ActivityResultContracts.RequestPermission(), new ActivityResultCallback<Boolean>() {
-                @Override
-                public void onActivityResult(Boolean isGranted) {
-                    Toast.makeText(MapboxLocationPickerActivity.this,
-                            isGranted ? "Permission Granted!" : "Permission not granted!",
-                            Toast.LENGTH_SHORT).show();
-                }
-            }
-    );
+    private GoogleMap map;
+    private Marker pickMarker;
+    private FusedLocationProviderClient fusedLocationClient;
+    private LocationCallback locationCallback;
+    private boolean recenterEnabled = true;
+    private FloatingActionButton fab;
+    private Button btnSubmit;
 
-    private final OnIndicatorBearingChangedListener onIndicatorBearingChangedListener = new OnIndicatorBearingChangedListener() {
-        @Override
-        public void onIndicatorBearingChanged(double bearing) {
-            mapView.getMapboxMap().setCamera(new CameraOptions.Builder().bearing(bearing).build());
-        }
-    };
+    // Launcher for location permission
+    private LatLng selectedLocation;
 
-    private final OnIndicatorPositionChangedListener onIndicatorPositionChangedListener = new OnIndicatorPositionChangedListener() {
-        @Override
-        public void onIndicatorPositionChanged(@NonNull Point point) {
-            mapView.getMapboxMap().setCamera(new CameraOptions.Builder().center(point).zoom(18.0).build());
-            getGestures(mapView).setFocalPoint(mapView.getMapboxMap().pixelForCoordinate(point));
-            selectedLocation = point;  // Set selected location to current position
-        }
-    };
+    @SuppressLint("MissingPermission")
+    private final ActivityResultLauncher<String> requestPermission =
+            registerForActivityResult(
+                    new ActivityResultContracts.RequestPermission(),
+                    isGranted -> {
+                        Toast.makeText(this,
+                                isGranted ? "Permission Granted!" : "Permission not granted!",
+                                Toast.LENGTH_SHORT).show();
 
-    private final OnMoveListener onMoveListener = new OnMoveListener() {
-        @Override
-        public void onMoveBegin(@NonNull MoveGestureDetector detector) {
-            LocationComponentPlugin locationComponent = getLocationComponent(mapView);
-            locationComponent.removeOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener);
-            locationComponent.removeOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener);
-            getGestures(mapView).removeOnMoveListener(onMoveListener);
-            floatingActionButton.show();
-        }
+                        if (isGranted && map != null) {
+                            map.setMyLocationEnabled(true);
+                            startLocationUpdates();
+                        }
+                    }
+            );
 
-        @Override
-        public boolean onMove(@NonNull MoveGestureDetector detector) {
-            PointF focalPoint = detector.getFocalPoint();
-
-            // Convert PointF (x, y) to ScreenCoordinate (Mapbox uses ScreenCoordinate for pixel-based calculations)
-            ScreenCoordinate screenCoordinate = new ScreenCoordinate(focalPoint.x, focalPoint.y);
-
-            // Convert the screen coordinates to map coordinates (latitude, longitude)
-            selectedLocation = mapView.getMapboxMap().coordinateForPixel(screenCoordinate);
-            // Update selected location
-            return false;
-        }
-
-        @Override
-        public void onMoveEnd(@NonNull MoveGestureDetector detector) {
-            PointF focalPoint = detector.getFocalPoint();
-
-            // Convert PointF (x, y) to ScreenCoordinate (Mapbox uses ScreenCoordinate for pixel-based calculations)
-            ScreenCoordinate screenCoordinate = new ScreenCoordinate(focalPoint.x, focalPoint.y);
-
-            // Convert the screen coordinates to map coordinates (latitude, longitude)
-            selectedLocation = mapView.getMapboxMap().coordinateForPixel(screenCoordinate);
-
-
-            if (selectedLocation != null) {
-                double latitude = selectedLocation.latitude();
-                double longitude = selectedLocation.longitude();
-                Toast.makeText(MapboxLocationPickerActivity.this,
-                        "Location Picked: " + latitude + ", " + longitude,
-                        Toast.LENGTH_SHORT).show();
-            }
-        }
-
-    };
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mapbox_location_picker);
 
-        mapView = findViewById(R.id.mapView);
-        floatingActionButton = findViewById(R.id.focuslocation);
-        confirmLocationButton = findViewById(R.id.confirm_location_button); // Button to confirm selection
+        // 1) Setup location client
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        floatingActionButton.hide();
-
-        mapView.getMapboxMap().loadStyleUri(Style.STANDARD, new Style.OnStyleLoaded() {
-            @Override
-            public void onStyleLoaded(@NonNull Style style) {
-                initializeLocationComponent();
+        // 2) Find your FAB and hide until user drags
+        fab = findViewById(R.id.focuslocation);
+        btnSubmit = findViewById(R.id.btn_submit);
+        fab.hide();
+        fab.setOnClickListener(v -> {
+            recenterEnabled = true;
+            fab.hide();
+        });
+        btnSubmit.setOnClickListener(v -> {
+            if (selectedLocation != null) {
+                Intent result = new Intent();
+                result.putExtra("latitude",  selectedLocation.latitude);
+                result.putExtra("longitude", selectedLocation.longitude);
+                setResult(RESULT_OK, result);
+                finish();
+            } else {
+                Toast.makeText(this, "No location selected yet", Toast.LENGTH_SHORT).show();
             }
         });
 
-        floatingActionButton.setOnClickListener(new View.OnClickListener() {
+        // 3) Prep the map fragment
+        SupportMapFragment mapFrag = (SupportMapFragment)
+                getSupportFragmentManager().findFragmentById(R.id.map);
+        mapFrag.getMapAsync(this);
+
+        // 4) Define what happens on each location update
+        locationCallback = new LocationCallback() {
             @Override
-            public void onClick(View v) {
-                resetLocationTracking();
+            public void onLocationResult(@NonNull LocationResult result) {
+                if (map == null) return;
+                Location loc = result.getLastLocation();
+                if (loc == null) return;
+
+                LatLng ll = new LatLng(loc.getLatitude(), loc.getLongitude());
+                if (recenterEnabled) {
+                    CameraPosition cam = new CameraPosition.Builder()
+                            .target(ll)
+                            .zoom(18f)
+                            .bearing(loc.getBearing())
+                            .build();
+                    map.animateCamera(CameraUpdateFactory.newCameraPosition(cam));
+                }
+            }
+        };
+
+        // 5) Ask for permission (this will trigger our launcher callback)
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            requestPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+    }
+
+    @SuppressLint("DefaultLocale")
+    @Override
+    public void onMapReady(@NonNull GoogleMap googleMap) {
+        map = googleMap;
+
+        // Turn off the built-in MyLocation button
+        map.getUiSettings().setMyLocationButtonEnabled(false);
+
+        // If we already have permission, enable the layer & start updates
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+
+            map.setMyLocationEnabled(true);
+            startLocationUpdates();
+        }
+
+        // Show FAB when the user drags the map
+        map.setOnCameraMoveStartedListener(reason -> {
+            if (reason == GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) {
+                recenterEnabled = false;
+                fab.show();
             }
         });
 
-        confirmLocationButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                returnSelectedLocation();
+        map.setOnCameraIdleListener(() -> {
+            LatLng newCenter = map.getCameraPosition().target;
+
+            if (pickMarker == null) {
+                // first‐time drop
+                pickMarker = map.addMarker(new MarkerOptions()
+                        .position(newCenter)
+                        .title("Picked Location"));
+            } else {
+                // animate from old position to newCenter
+                LatLng start = pickMarker.getPosition();
+                ValueAnimator animator = ValueAnimator.ofFloat(0, 1);
+                animator.setDuration(600); // half-second
+                animator.addUpdateListener(animation -> {
+                    float frac = animation.getAnimatedFraction();
+                    double lat = (newCenter.latitude  * frac) + (start.latitude  * (1 - frac));
+                    double lng = (newCenter.longitude * frac) + (start.longitude * (1 - frac));
+                    pickMarker.setPosition(new LatLng(lat, lng));
+                });
+                animator.start();
             }
+
+            selectedLocation = newCenter;
         });
-
-        locationPermissionRequest.launch(android.Manifest.permission.ACCESS_FINE_LOCATION);
     }
 
-    private void initializeLocationComponent() {
-        LocationComponentPlugin locationComponent = getLocationComponent(mapView);
-        locationComponent.setEnabled(true);
-        locationComponent.setLocationPuck(new LocationPuck2D());
-        locationComponent.addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener);
-        locationComponent.addOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener);
-        getGestures(mapView).addOnMoveListener(onMoveListener);
+    private void startLocationUpdates() {
+        LocationRequest req = LocationRequest.create()
+                .setInterval(5_000)
+                .setFastestInterval(2_000)
+                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+        fusedLocationClient.requestLocationUpdates(
+                req, locationCallback, Looper.getMainLooper());
     }
 
-    private void resetLocationTracking() {
-        LocationComponentPlugin locationComponent = getLocationComponent(mapView);
-        locationComponent.addOnIndicatorPositionChangedListener(onIndicatorPositionChangedListener);
-        locationComponent.addOnIndicatorBearingChangedListener(onIndicatorBearingChangedListener);
-        getGestures(mapView).addOnMoveListener(onMoveListener);
-        floatingActionButton.hide();
+    @Override
+    protected void onPause() {
+        super.onPause();
+        fusedLocationClient.removeLocationUpdates(locationCallback);
     }
 
-    private void returnSelectedLocation() {
-        if (selectedLocation != null) {
-            Intent resultIntent = new Intent();
-            resultIntent.putExtra("latitude", selectedLocation.latitude());
-            resultIntent.putExtra("longitude", selectedLocation.longitude());
-            setResult(RESULT_OK, resultIntent);
-            finish(); // Close the activity and return the result
-        } else {
-            Toast.makeText(this, "No location selected", Toast.LENGTH_SHORT).show();
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (map != null &&
+                ContextCompat.checkSelfPermission(this,
+                        Manifest.permission.ACCESS_FINE_LOCATION)
+                        == PackageManager.PERMISSION_GRANTED) {
+
+            startLocationUpdates();
         }
     }
 }

@@ -3,32 +3,29 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Map View (Full Screen) -->
-    <com.mapbox.maps.MapView
-        android:id="@+id/mapView"
+    <!-- 1) The Google Map fragment -->
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- Floating Action Button for Focusing on Location -->
+    <!-- 2) Submit button -->
+    <Button
+        android:id="@+id/btn_submit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Submit Location"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="16dp"/>
+
+    <!-- 3) Re-center FAB -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/focuslocation"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:src="@drawable/map_marker"
-        android:layout_gravity="bottom|end" />
-
-    <!-- Confirm Location Button (Bottom) -->
-    <Button
-        android:id="@+id/confirm_location_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Confirm Location"
-        android:layout_gravity="bottom"
-        android:backgroundTint="@color/color_black"
-        android:textColor="@android:color/white"
-        android:padding="10dp"
-        android:layout_margin="16dp"/>
-
+        android:visibility="gone"/>
 </FrameLayout>
-

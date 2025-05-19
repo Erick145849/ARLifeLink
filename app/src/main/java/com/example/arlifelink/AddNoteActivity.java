@@ -172,8 +172,12 @@ public class AddNoteActivity extends AppCompatActivity {
             Toast.makeText(this, "Attachment added successfully!", Toast.LENGTH_SHORT).show();
         }
         else if (requestCode == 200 && resultCode == RESULT_OK && data != null) {
-            String pickedLocation = data.getStringExtra("selected_location");
-            locationText.setText(pickedLocation);
+            double lat = data.getDoubleExtra("latitude", 0.0);
+            double lng = data.getDoubleExtra("longitude", 0.0);
+
+            // format however you like
+            String picked = String.format("Lat: %.5f, Lng: %.5f", lat, lng);
+            locationText.setText(picked);
         }
     }
 

@@ -29,6 +29,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.Toast;
@@ -83,7 +84,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -203,7 +204,10 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     depthSettings.onCreate(this);
     instantPlacementSettings.onCreate(this);
     ImageButton settingsButton = findViewById(R.id.settings_button);
-    settingsButton.setOnClickListener(
+    Button clearButton = findViewById(R.id.clear_button);
+    clearButton.setOnClickListener(v -> clearAllNotes());
+
+      settingsButton.setOnClickListener(
         new View.OnClickListener() {
           @Override
           public void onClick(View v) {
@@ -412,43 +416,41 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
           new Mesh(
               render, Mesh.PrimitiveMode.POINTS, /* indexBuffer= */ null, pointCloudVertexBuffers);
 
-      // Virtual object to render (ARCore pawn)
       virtualObjectAlbedoTexture =
-          Texture.createFromAsset(
-              render,
-              "models/pawn_albedo.png",
-              Texture.WrapMode.CLAMP_TO_EDGE,
-              Texture.ColorFormat.SRGB);
+              Texture.createFromAsset(
+                      render,
+                      "models/sticky_note.png",              // you’re still using the same pawn textures
+                      Texture.WrapMode.CLAMP_TO_EDGE,
+                      Texture.ColorFormat.SRGB);
       virtualObjectAlbedoInstantPlacementTexture =
-          Texture.createFromAsset(
-              render,
-              "models/pawn_albedo_instant_placement.png",
-              Texture.WrapMode.CLAMP_TO_EDGE,
-              Texture.ColorFormat.SRGB);
+              Texture.createFromAsset(
+                      render,
+                      "models/sticky_note.png",
+                      Texture.WrapMode.CLAMP_TO_EDGE,
+                      Texture.ColorFormat.SRGB);
       Texture virtualObjectPbrTexture =
-          Texture.createFromAsset(
-              render,
-              "models/pawn_roughness_metallic_ao.png",
-              Texture.WrapMode.CLAMP_TO_EDGE,
-              Texture.ColorFormat.LINEAR);
+              Texture.createFromAsset(
+                      render,
+                      "models/sticky_note.png",
+                      Texture.WrapMode.CLAMP_TO_EDGE,
+                      Texture.ColorFormat.LINEAR);
 
-      virtualObjectMesh = Mesh.createFromAsset(render, "models/pawn.obj");
+// **Swap ONLY this line** — point Mesh.createFromAsset at your OBJ:
+      virtualObjectMesh = Mesh.createFromAsset(render, "models/sticky_note_double.obj");
+
       virtualObjectShader =
-          Shader.createFromAssets(
-                  render,
-                  "shaders/environmental_hdr.vert",
-                  "shaders/environmental_hdr.frag",
-                  /* defines= */ new HashMap<String, String>() {
-                    {
-                      put(
-                          "NUMBER_OF_MIPMAP_LEVELS",
-                          Integer.toString(cubemapFilter.getNumberOfMipmapLevels()));
-                    }
-                  })
-              .setTexture("u_AlbedoTexture", virtualObjectAlbedoTexture)
-              .setTexture("u_RoughnessMetallicAmbientOcclusionTexture", virtualObjectPbrTexture)
-              .setTexture("u_Cubemap", cubemapFilter.getFilteredCubemapTexture())
-              .setTexture("u_DfgTexture", dfgTexture);
+              Shader.createFromAssets(
+                              render,
+                              "shaders/environmental_hdr.vert",
+                              "shaders/environmental_hdr.frag",
+                              Collections.singletonMap(
+                                      "NUMBER_OF_MIPMAP_LEVELS",
+                                      Integer.toString(cubemapFilter.getNumberOfMipmapLevels())))
+                      .setTexture("u_AlbedoTexture", virtualObjectAlbedoTexture)
+                      // this is the line you asked about — keep it as-is if you still have a PBR map:
+                      .setTexture("u_RoughnessMetallicAmbientOcclusionTexture", virtualObjectPbrTexture)
+                      .setTexture("u_Cubemap", cubemapFilter.getFilteredCubemapTexture())
+                      .setTexture("u_DfgTexture", dfgTexture);
     } catch (IOException e) {
       Log.e(TAG, "Failed to read a required asset file", e);
       messageSnackbarHelper.showError(this, "Failed to read a required asset file: " + e);
@@ -669,11 +671,24 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
           // space. This anchor is created on the Plane to place the 3D model
           // in the correct position relative both to the world and to the plane.
           // 1. Create & render the local anchor immediately
-          Anchor localAnchor = hit.createAnchor();
-          wrappedAnchors.add(new WrappedAnchor(localAnchor, trackable));
-          saveAnchorPose(localAnchor);
+            // 1. Get the hit’s position and the camera’s rotation quaternion
+            Pose hitPose    = hit.getHitPose();
+            Pose cameraPose = frame.getCamera().getPose();
 
-          // For devices that support the Depth API, shows a dialog to suggest enabling
+// 2. Build a new Pose: translation from the hit, rotation from the camera
+            Pose notePose = new Pose(
+                    new float[] { hitPose.tx(), hitPose.ty(), hitPose.tz() },
+                    new float[] { cameraPose.qx(), cameraPose.qy(),
+                            cameraPose.qz(), cameraPose.qw() }
+            );
+
+// 3. Create the anchor with that “face-you” orientation
+            Anchor noteAnchor = session.createAnchor(notePose);
+            wrappedAnchors.add(new WrappedAnchor(noteAnchor, trackable));
+            saveAnchorPose(noteAnchor);
+
+
+            // For devices that support the Depth API, shows a dialog to suggest enabling
           // depth-based occlusion. This dialog needs to be spawned on the UI thread.
           this.runOnUiThread(this::showOcclusionDialogIfNeeded);
 
@@ -905,6 +920,20 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     }
     session.configure(config);
   }
+    private void clearAllNotes() {
+        // 1) Detach every anchor so ARCore frees it
+        for (WrappedAnchor wa : wrappedAnchors) {
+            wa.getAnchor().detach();
+        }
+
+        // 2) Remove them from our in-memory list
+        wrappedAnchors.clear();
+
+        // 3) Clear saved anchors in prefs so they don’t reload next time
+        SharedPreferences prefs = getSharedPreferences("arlifelink", MODE_PRIVATE);
+        prefs.edit().remove("anchors").apply();
+    }
+
 }
 
 /**
@@ -927,4 +956,5 @@ class WrappedAnchor {
   public Trackable getTrackable() {
     return trackable;
   }
+
 }

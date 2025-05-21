@@ -19,5 +19,14 @@
         android:layout_margin="25dp"
         android:src="@drawable/ic_settings"
         android:background="@android:color/transparent"/>
+    <Button
+        android:id="@+id/clear_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Clear All Notes"
+        android:backgroundTint="?attr/colorPrimary"
+        android:textColor="@android:color/white"
+        android:layout_margin="16dp"
+        android:layout_gravity="top|end"/>
 
 </RelativeLayout>

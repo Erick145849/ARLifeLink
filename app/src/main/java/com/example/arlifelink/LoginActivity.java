@@ -17,6 +17,9 @@ public class LoginActivity extends AppCompatActivity {
     private Button btnLogin;
     private TextView txtSignUp;
     private FirebaseAuth mAuth;
+    private static final String JUDGE_EMAIL = "individualproject2025@gmail.com";
+    private static final String JUDGE_PASS  = "Samsung2025";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +31,22 @@ public class LoginActivity extends AppCompatActivity {
         passwordLogin = findViewById(R.id.passwordLogin);
         btnLogin = findViewById(R.id.btnLogin);
         txtSignUp = findViewById(R.id.txtSignUp);
-
+        Button btnQuick = findViewById(R.id.quickLogin);
+        btnQuick.setOnClickListener(v -> {
+            FirebaseAuth auth = FirebaseAuth.getInstance();
+            auth.signInWithEmailAndPassword(JUDGE_EMAIL, JUDGE_PASS)
+                    .addOnSuccessListener(result -> {
+                        // e.g. go to MainActivity
+                        startActivity(new Intent(this, MainActivity.class));
+                        finish();
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(this,
+                                            "Quick login failed: " + e.getMessage(),
+                                            Toast.LENGTH_SHORT)
+                                    .show()
+                    );
+        });
         btnLogin.setOnClickListener(v -> {
             String email = emailLogin.getText().toString();
             String password = passwordLogin.getText().toString();

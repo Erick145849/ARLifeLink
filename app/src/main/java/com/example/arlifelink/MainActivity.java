@@ -1,9 +1,12 @@
 package com.example.arlifelink;
 
+import android.app.AlarmManager;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -25,6 +28,7 @@ import com.google.firebase.auth.FirebaseAuth;
 
 public class MainActivity extends AppCompatActivity {
     private static final int CAMERA_PERMISSION_CODE = 1234;
+    private static final int REQUEST_POST_NOTIFICATIONS = 1234;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,9 +42,7 @@ public class MainActivity extends AppCompatActivity {
 
         bottomNavigationView.setOnItemSelectedListener(item -> {
             Fragment selectedFragment = null;
-            if(item.getItemId()==R.id.nav_main)
-                selectedFragment = new MainFragment();
-            else if(item.getItemId()==R.id.nav_ar) {
+            if (item.getItemId() == R.id.nav_main){
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                         != PackageManager.PERMISSION_GRANTED
                         || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -56,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
                     // don’t swap fragments yet – wait for the user to grant
                     return false;
                 }
-                selectedFragment = new ARFragment();
+            selectedFragment = new MainFragment();
             }
             else if(item.getItemId()==R.id.nav_memories_map)
                 selectedFragment = new MemoriesMapFragment();
@@ -65,7 +67,21 @@ public class MainActivity extends AppCompatActivity {
             getSupportFragmentManager().beginTransaction().replace(R.id.container, selectedFragment).commit();
             return true;
         });
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this,
+                    Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{ Manifest.permission.POST_NOTIFICATIONS },
+                        REQUEST_POST_NOTIFICATIONS);
+            }
+        }
 
+// 2) For exact alarms on Android 12+…
+        AlarmManager am = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !am.canScheduleExactAlarms()) {
+            startActivity(new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM));
+        }
     }
     @Override
     protected void onStart() {
@@ -95,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
                 // now that permissions are in, actually load the ARFragment
                 getSupportFragmentManager()
                         .beginTransaction()
-                        .replace(R.id.container, new ARFragment())
+                        .replace(R.id.container, new MainFragment())
                         .commit();
             } else {
                 Toast.makeText(this,

@@ -20,6 +20,10 @@ import com.google.ar.core.exceptions.NotTrackingException;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.media.Image;
 import android.opengl.GLES30;
 import android.opengl.GLSurfaceView;
@@ -33,6 +37,9 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.Toast;
+
+import androidx.annotation.ColorInt;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.ar.core.Anchor;
@@ -80,14 +87,22 @@ import com.google.ar.core.exceptions.UnavailableArcoreNotInstalledException;
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException;
 import com.google.ar.core.exceptions.UnavailableSdkTooOldException;
 import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -96,12 +111,19 @@ import java.util.Set;
  * plane to place a 3D model.
  */
 public class HelloArActivity extends AppCompatActivity implements SampleRender.Renderer {
-
+  private static final String KEY_PREFIX = "pose_";
   private boolean anchorsLoaded = false;
   private static final String TAG = HelloArActivity.class.getSimpleName();
 
   private static final String SEARCHING_PLANE_MESSAGE = "Searching for surfaces...";
   private static final String WAITING_FOR_TAP_MESSAGE = "Tap on a surface to place an object.";
+  // Tracks whether we’ve captured the world origin yet
+  private boolean originSet = false;
+  private Pose worldOriginPose;
+
+  // In prefs: a Set<String> of CSV‐encoded relative‐poses
+  private static final String PREFS_NAME     = "arl_notes";
+  private static final String KEY_REL_POSES  = "relative_poses";
 
   // See the definition of updateSphericalHarmonicsCoefficients for an explanation of these
   // constants.
@@ -116,6 +138,8 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     -0.273137f,
     0.136569f,
   };
+  private Pose   pendingLoadPose;
+  private boolean hasPendingLoad = false;
 
   private static final float Z_NEAR = 0.1f;
   private static final float Z_FAR = 100f;
@@ -139,10 +163,11 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
   private BackgroundRenderer backgroundRenderer;
   private Framebuffer virtualSceneFramebuffer;
   private boolean hasSetTextureNames = false;
-
+  private boolean hasPendingPlacement = false;
+  private Anchor pendingAnchor;
   private final DepthSettings depthSettings = new DepthSettings();
   private boolean[] depthSettingsMenuDialogCheckboxes = new boolean[2];
-
+  private Button submitButton;
   private final InstantPlacementSettings instantPlacementSettings = new InstantPlacementSettings();
   private boolean[] instantPlacementSettingsMenuDialogCheckboxes = new boolean[1];
   // Assumed distance from the device camera to the surface on which user will try to place objects.
@@ -167,8 +192,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
   private Shader virtualObjectShader;
   private Texture virtualObjectAlbedoTexture;
   private Texture virtualObjectAlbedoInstantPlacementTexture;
-
-  private final List<WrappedAnchor> wrappedAnchors = new ArrayList<>();
+  private List<WrappedAnchor> wrappedAnchors = new ArrayList<>();
 
   // Environmental HDR
   private Texture dfgTexture;
@@ -184,18 +208,19 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
   private final float[] viewInverseMatrix = new float[16];
   private final float[] worldLightDirection = {0.0f, 0.0f, 0.0f, 0.0f};
   private final float[] viewLightDirection = new float[4]; // view x world light direction
-
+  private String noteText;
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_ar);
     surfaceView = findViewById(R.id.surfaceview);
     displayRotationHelper = new DisplayRotationHelper(/* context= */ this);
-
+    noteText = getIntent().getStringExtra("NOTE_TEXT");
     // Set up touch listener.
     tapHelper = new TapHelper(/* context= */ this);
     surfaceView.setOnTouchListener(tapHelper);
-
+    submitButton = findViewById(R.id.btn_submit);
+    submitButton.setOnClickListener(v -> onSubmit());
     // Set up renderer.
     render = new SampleRender(surfaceView, this, getAssets());
 
@@ -204,8 +229,6 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     depthSettings.onCreate(this);
     instantPlacementSettings.onCreate(this);
     ImageButton settingsButton = findViewById(R.id.settings_button);
-    Button clearButton = findViewById(R.id.clear_button);
-    clearButton.setOnClickListener(v -> clearAllNotes());
 
       settingsButton.setOnClickListener(
         new View.OnClickListener() {
@@ -219,6 +242,69 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
         });
   }
 
+
+  private String poseToCsv(Pose p) {
+    float[] t = p.getTranslation();
+    float[] q = p.getRotationQuaternion();
+    return String.format(Locale.US,
+            "%f,%f,%f,%f,%f,%f,%f",
+            t[0],t[1],t[2], q[0],q[1],q[2],q[3]);
+  }
+
+  @Nullable
+  private Pose csvToPose(String csv) {
+    String[] parts = csv.split(",");
+    if (parts.length != 7) return null;
+    try {
+      float tx = Float.parseFloat(parts[0]);
+      float ty = Float.parseFloat(parts[1]);
+      float tz = Float.parseFloat(parts[2]);
+      float qx = Float.parseFloat(parts[3]);
+      float qy = Float.parseFloat(parts[4]);
+      float qz = Float.parseFloat(parts[5]);
+      float qw = Float.parseFloat(parts[6]);
+      return new Pose(new float[]{tx,ty,tz}, new float[]{qx,qy,qz,qw});
+    } catch (NumberFormatException e) {
+      return null;
+    }
+  }
+  private void loadSavedAnchors() {
+    SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+    Set<String> csvSet = prefs.getStringSet(KEY_REL_POSES, Collections.emptySet());
+    for (String csv : csvSet) {
+      Pose rel = csvToPose(csv);
+      if (rel == null) continue;
+      // worldPose = origin ∘ relative
+      Pose world = worldOriginPose.compose(rel);
+      Anchor a = session.createAnchor(world);
+      wrappedAnchors.add(new WrappedAnchor(a));
+    }
+  }
+
+  private void onSubmit() {
+    if (!hasPendingPlacement || pendingAnchor == null) {
+      setResult(RESULT_CANCELED);
+    } else {
+      // persist new pose
+      savePoseLocally(noteText, pendingAnchor.getPose());
+      setResult(RESULT_OK);
+    }
+    finish();
+  }
+
+  private void savePoseLocally(String noteTitle, Pose p) {
+    getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit()
+            .putString(KEY_PREFIX + noteTitle, poseToCsv(p))
+            .apply();
+  }
+
+  @Nullable
+  private Pose loadPoseLocally(String noteTitle) {
+    String csv = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getString(KEY_PREFIX + noteTitle, null);
+    return (csv != null) ? csvToPose(csv) : null;
+  }
   /** Menu button to launch feature specific settings. */
   protected boolean settingsMenuClick(MenuItem item) {
     if (item.getItemId() == R.id.depth_settings) {
@@ -229,6 +315,35 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       return true;
     }
     return false;
+  }
+  private static Bitmap textToBitmap(
+          String text,
+          int width,
+          int height,
+          float textSizePx,
+          @ColorInt int textColor,
+          @ColorInt int bgColor
+  ) {
+    Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    paint.setTextSize(textSizePx);
+    paint.setColor(textColor);
+    paint.setTextAlign(Paint.Align.CENTER);
+
+    Bitmap bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+    Canvas c  = new Canvas(bmp);
+    c.drawColor(bgColor);
+
+    // Rotate the canvas 90° counter-clockwise around its center
+    c.save();
+    c.rotate(-90f, width * 0.5f, height * 0.5f);
+
+    // draw text centered in the rotated canvas
+    float x = width  * 0.5f;
+    float y = height * 0.5f - (paint.descent() + paint.ascent()) * 0.5f;
+    c.drawText(text, x, y, paint);
+
+    c.restore();
+    return bmp;
   }
 
   @Override
@@ -300,8 +415,12 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
         return;
       }
     }
+    Pose saved = loadPoseLocally(noteText);
+    if (saved != null) {
+      pendingLoadPose = saved;
+      hasPendingLoad  = true;
+    }
 
-    // Note that order matters - see the note in onPause(), the reverse applies here.
     try {
       configureSession();
       // To record a live camera session for later playback, call
@@ -415,25 +534,41 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       pointCloudMesh =
           new Mesh(
               render, Mesh.PrimitiveMode.POINTS, /* indexBuffer= */ null, pointCloudVertexBuffers);
-
+      Bitmap textBmp = textToBitmap(
+              noteText,   // your placeholder text
+              512,               // texture resolution
+              512,
+              64f,               // font size in px
+              Color.BLACK,       // text color
+              Color.YELLOW       // background color
+      );
+      Texture textTexture = Texture.createFromBitmap(
+              render,
+              textBmp,
+              Texture.WrapMode.CLAMP_TO_EDGE,
+              Texture.ColorFormat.SRGB);
       virtualObjectAlbedoTexture =
-              Texture.createFromAsset(
+              Texture.createFromBitmap(
                       render,
-                      "models/sticky_note.png",              // you’re still using the same pawn textures
+                      textBmp,
                       Texture.WrapMode.CLAMP_TO_EDGE,
                       Texture.ColorFormat.SRGB);
       virtualObjectAlbedoInstantPlacementTexture =
-              Texture.createFromAsset(
+              Texture.createFromBitmap(
                       render,
-                      "models/sticky_note.png",
+                      textBmp,
                       Texture.WrapMode.CLAMP_TO_EDGE,
                       Texture.ColorFormat.SRGB);
       Texture virtualObjectPbrTexture =
-              Texture.createFromAsset(
+              Texture.createFromBitmap(
                       render,
-                      "models/sticky_note.png",
+                      textBmp,
                       Texture.WrapMode.CLAMP_TO_EDGE,
-                      Texture.ColorFormat.LINEAR);
+                      Texture.ColorFormat.SRGB);
+      Texture white = Texture.createFromAsset(render,
+              "models/white_1x1.png",
+              Texture.WrapMode.CLAMP_TO_EDGE,
+              Texture.ColorFormat.LINEAR);
 
 // **Swap ONLY this line** — point Mesh.createFromAsset at your OBJ:
       virtualObjectMesh = Mesh.createFromAsset(render, "models/sticky_note_double.obj");
@@ -446,11 +581,21 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
                               Collections.singletonMap(
                                       "NUMBER_OF_MIPMAP_LEVELS",
                                       Integer.toString(cubemapFilter.getNumberOfMipmapLevels())))
-                      .setTexture("u_AlbedoTexture", virtualObjectAlbedoTexture)
+                      .setTexture("u_AlbedoTexture", textTexture)
                       // this is the line you asked about — keep it as-is if you still have a PBR map:
-                      .setTexture("u_RoughnessMetallicAmbientOcclusionTexture", virtualObjectPbrTexture)
+                      .setTexture(
+                              "u_RoughnessMetallicAmbientOcclusionTexture", white)
+//                      .setTexture("u_RoughnessMetallicAmbientOcclusionTexture", virtualObjectPbrTexture)
                       .setTexture("u_Cubemap", cubemapFilter.getFilteredCubemapTexture())
                       .setTexture("u_DfgTexture", dfgTexture);
+
+
+      if (loadPoseLocally(noteText) != null) {
+        Pose saved = loadPoseLocally(noteText);
+        Anchor a = session.createAnchor(saved);
+        wrappedAnchors.clear();
+        wrappedAnchors.add(new WrappedAnchor(a));
+      }
     } catch (IOException e) {
       Log.e(TAG, "Failed to read a required asset file", e);
       messageSnackbarHelper.showError(this, "Failed to read a required asset file: " + e);
@@ -495,11 +640,12 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       messageSnackbarHelper.showError(this, "Camera not available. Try restarting the app.");
       return;
     }
-    Camera camera = frame.getCamera();
 
-    if (!anchorsLoaded && camera.getTrackingState() == TrackingState.TRACKING) {
+    Camera camera = frame.getCamera();
+    if (!originSet && camera.getTrackingState() == TrackingState.TRACKING) {
+      worldOriginPose = camera.getPose();
+      originSet = true;
       loadSavedAnchors();
-      anchorsLoaded = true;
     }
     // Update BackgroundRenderer state to match the depth settings.
     try {
@@ -603,7 +749,6 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     render.clear(virtualSceneFramebuffer, 0f, 0f, 0f, 0f);
     for (WrappedAnchor wrappedAnchor : wrappedAnchors) {
       Anchor anchor = wrappedAnchor.getAnchor();
-      Trackable trackable = wrappedAnchor.getTrackable();
       if (anchor.getTrackingState() != TrackingState.TRACKING) {
         continue;
       }
@@ -620,14 +765,8 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
       virtualObjectShader.setMat4("u_ModelView", modelViewMatrix);
       virtualObjectShader.setMat4("u_ModelViewProjection", modelViewProjectionMatrix);
 
-      if (trackable instanceof InstantPlacementPoint
-          && ((InstantPlacementPoint) trackable).getTrackingMethod()
-              == InstantPlacementPoint.TrackingMethod.SCREENSPACE_WITH_APPROXIMATE_DISTANCE) {
         virtualObjectShader.setTexture(
             "u_AlbedoTexture", virtualObjectAlbedoInstantPlacementTexture);
-      } else {
-        virtualObjectShader.setTexture("u_AlbedoTexture", virtualObjectAlbedoTexture);
-      }
 
       render.draw(virtualObjectMesh, virtualObjectShader, virtualSceneFramebuffer);
     }
@@ -635,110 +774,93 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
     // Compose the virtual scene with the background.
     backgroundRenderer.drawVirtualScene(render, virtualSceneFramebuffer, Z_NEAR, Z_FAR);
   }
-
   // Handle only one tap per frame, as taps are usually low frequency compared to frame rate.
   private void handleTap(Frame frame, Camera camera) {
     MotionEvent tap = tapHelper.poll();
-    if (tap != null && camera.getTrackingState() == TrackingState.TRACKING) {
-      List<HitResult> hitResultList;
-      if (instantPlacementSettings.isInstantPlacementEnabled()) {
-        hitResultList =
-            frame.hitTestInstantPlacement(tap.getX(), tap.getY(), APPROXIMATE_DISTANCE_METERS);
-      } else {
-        hitResultList = frame.hitTest(tap);
-      }
-      for (HitResult hit : hitResultList) {
-        // If any plane, Oriented Point, or Instant Placement Point was hit, create an anchor.
-        Trackable trackable = hit.getTrackable();
-        // If a plane was hit, check that it was hit inside the plane polygon.
-        // DepthPoints are only returned if Config.DepthMode is set to AUTOMATIC.
-        if ((trackable instanceof Plane
-                && ((Plane) trackable).isPoseInPolygon(hit.getHitPose())
-                && (PlaneRenderer.calculateDistanceToPlane(hit.getHitPose(), camera.getPose()) > 0))
-            || (trackable instanceof Point
-                && ((Point) trackable).getOrientationMode()
-                    == OrientationMode.ESTIMATED_SURFACE_NORMAL)
-            || (trackable instanceof InstantPlacementPoint)
-            || (trackable instanceof DepthPoint)) {
-          // Cap the number of objects created. This avoids overloading both the
-          // rendering system and ARCore.
-          if (wrappedAnchors.size() >= 20) {
-            wrappedAnchors.get(0).getAnchor().detach();
-            wrappedAnchors.remove(0);
-          }
+    if (tap == null || camera.getTrackingState() != TrackingState.TRACKING) return;
 
-          // Adding an Anchor tells ARCore that it should track this position in
-          // space. This anchor is created on the Plane to place the 3D model
-          // in the correct position relative both to the world and to the plane.
-          // 1. Create & render the local anchor immediately
-            // 1. Get the hit’s position and the camera’s rotation quaternion
-            Pose hitPose    = hit.getHitPose();
-            Pose cameraPose = frame.getCamera().getPose();
+    List<HitResult> hits = instantPlacementSettings.isInstantPlacementEnabled()
+            ? frame.hitTestInstantPlacement(tap.getX(), tap.getY(), APPROXIMATE_DISTANCE_METERS)
+            : frame.hitTest(tap);
 
-// 2. Build a new Pose: translation from the hit, rotation from the camera
-            Pose notePose = new Pose(
-                    new float[] { hitPose.tx(), hitPose.ty(), hitPose.tz() },
-                    new float[] { cameraPose.qx(), cameraPose.qy(),
-                            cameraPose.qz(), cameraPose.qw() }
-            );
+    for (HitResult hit : hits) {
+      Trackable t = hit.getTrackable();
+      boolean valid = (t instanceof Plane && ((Plane)t).isPoseInPolygon(hit.getHitPose()))
+              || t instanceof InstantPlacementPoint || t instanceof DepthPoint;
+      if (!valid) continue;
 
-// 3. Create the anchor with that “face-you” orientation
-            Anchor noteAnchor = session.createAnchor(notePose);
-            wrappedAnchors.add(new WrappedAnchor(noteAnchor, trackable));
-            saveAnchorPose(noteAnchor);
+      // detach old
+      for (WrappedAnchor wa : wrappedAnchors) wa.getAnchor().detach();
+      wrappedAnchors.clear();
 
+      // make world-space anchor
+      Pose hitPose = hit.getHitPose();
+      Pose camPose = camera.getPose();
+      Pose faceYou = new Pose(
+              new float[]{hitPose.tx(), hitPose.ty(), hitPose.tz()},
+              new float[]{camPose.qx(), camPose.qy(), camPose.qz(), camPose.qw()}
+      );
+      Anchor newAnchor = session.createAnchor(faceYou);
+      wrappedAnchors.add(new WrappedAnchor(newAnchor));
 
-            // For devices that support the Depth API, shows a dialog to suggest enabling
-          // depth-based occlusion. This dialog needs to be spawned on the UI thread.
-          this.runOnUiThread(this::showOcclusionDialogIfNeeded);
+      // compute relative = origin⁻¹ ∘ faceYou
+      Pose rel = worldOriginPose.inverse().compose(faceYou);
+      String csv = poseToCsv(rel);
 
-          // Hits are sorted by depth. Consider only closest hit on a plane, Oriented Point, or
-          // Instant Placement Point.
-          break;
-        }
-      }
+      // save into prefs set
+      SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+      Set<String> set = new HashSet<>(prefs.getStringSet(KEY_REL_POSES, Collections.emptySet()));
+      set.clear();             // you said only one at a time
+      set.add(csv);
+      prefs.edit().putStringSet(KEY_REL_POSES, set).apply();
+
+      break;
     }
   }
+
+
+
+
 
   // Save a single Anchor’s pose (translation + rotation) into SharedPreferences as a small CSV string
-  private void saveAnchorPose(Anchor anchor) {
-    Pose p = anchor.getPose();
-    float[] t = p.getTranslation();
-    float[] q = p.getRotationQuaternion();
-    // Format: "tx,ty,tz,qx,qy,qz,qw"
-    String csv = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f",
-            t[0], t[1], t[2], q[0], q[1], q[2], q[3]);
-    SharedPreferences prefs = getSharedPreferences("arlifelink", MODE_PRIVATE);
-    Set<String> set = new HashSet<>(prefs.getStringSet("anchors", new HashSet<>()));
-    set.add(csv);
-    prefs.edit().putStringSet("anchors", set).apply();
-  }
-
-  // Read back all saved poses and re-create Anchors
-  private void loadSavedAnchors() {
-    SharedPreferences prefs = getSharedPreferences("arlifelink", MODE_PRIVATE);
-    Set<String> set = prefs.getStringSet("anchors", new HashSet<>());
-    for (String csv : set) {
-      String[] parts = csv.split(",");
-      try {
-        float tx = Float.parseFloat(parts[0]);
-        float ty = Float.parseFloat(parts[1]);
-        float tz = Float.parseFloat(parts[2]);
-        float qx = Float.parseFloat(parts[3]);
-        float qy = Float.parseFloat(parts[4]);
-        float qz = Float.parseFloat(parts[5]);
-        float qw = Float.parseFloat(parts[6]);
-        Pose pose = new Pose(
-                new float[]{tx, ty, tz},
-                new float[]{qx, qy, qz, qw}
-        );
-        Anchor restored = session.createAnchor(pose);
-        wrappedAnchors.add(new WrappedAnchor(restored, null));
-      } catch (NotTrackingException | NumberFormatException e) {
-        // session not tracking yet or bad data → skip this anchor for now
-      }
-    }
-  }
+//  private void saveAnchorPose(Anchor anchor) {
+//    Pose p = anchor.getPose();
+//    float[] t = p.getTranslation();
+//    float[] q = p.getRotationQuaternion();
+//    // Format: "tx,ty,tz,qx,qy,qz,qw"
+//    String csv = String.format(Locale.US, "%f,%f,%f,%f,%f,%f,%f",
+//            t[0], t[1], t[2], q[0], q[1], q[2], q[3]);
+//    SharedPreferences prefs = getSharedPreferences("arlifelink", MODE_PRIVATE);
+//    Set<String> set = new HashSet<>(prefs.getStringSet("anchors", new HashSet<>()));
+//    set.add(csv);
+//    prefs.edit().putStringSet("anchors", set).apply();
+//  }
+//
+//  // Read back all saved poses and re-create Anchors
+//  private void loadSavedAnchors() {
+//    SharedPreferences prefs = getSharedPreferences("arlifelink", MODE_PRIVATE);
+//    Set<String> set = prefs.getStringSet("anchors", new HashSet<>());
+//    for (String csv : set) {
+//      String[] parts = csv.split(",");
+//      try {
+//        float tx = Float.parseFloat(parts[0]);
+//        float ty = Float.parseFloat(parts[1]);
+//        float tz = Float.parseFloat(parts[2]);
+//        float qx = Float.parseFloat(parts[3]);
+//        float qy = Float.parseFloat(parts[4]);
+//        float qz = Float.parseFloat(parts[5]);
+//        float qw = Float.parseFloat(parts[6]);
+//        Pose pose = new Pose(
+//                new float[]{tx, ty, tz},
+//                new float[]{qx, qy, qz, qw}
+//        );
+//        Anchor restored = session.createAnchor(pose);
+//        wrappedAnchors.add(new WrappedAnchor(restored, null));
+//      } catch (NotTrackingException | NumberFormatException e) {
+//        // session not tracking yet or bad data → skip this anchor for now
+//      }
+//    }
+//  }
 
 
   /**
@@ -941,20 +1063,7 @@ public class HelloArActivity extends AppCompatActivity implements SampleRender.R
  * whether or not an Anchor originally was attached to an {@link InstantPlacementPoint}.
  */
 class WrappedAnchor {
-  private Anchor anchor;
-  private Trackable trackable;
-
-  public WrappedAnchor(Anchor anchor, Trackable trackable) {
-    this.anchor = anchor;
-    this.trackable = trackable;
-  }
-
-  public Anchor getAnchor() {
-    return anchor;
-  }
-
-  public Trackable getTrackable() {
-    return trackable;
-  }
-
+  private final Anchor anchor;
+  public WrappedAnchor(Anchor a) { anchor = a; }
+  public Anchor getAnchor() { return anchor; }
 }

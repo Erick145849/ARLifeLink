@@ -1,12 +1,17 @@
 package com.example.arlifelink;
 
+import android.app.AlarmManager;
 import android.app.DatePickerDialog;
+import android.app.PendingIntent;
 import android.app.TimePickerDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.location.Location;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.*;
@@ -20,6 +25,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
@@ -80,9 +86,9 @@ public class AddNoteActivity extends AppCompatActivity {
             String location = locationText.getText().toString();
             String dueDate = dateButton.getText().toString(); // Use the selected date
             String reminder = timeButton.getText().toString(); // Use the selected time
-
+            String uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
             // Create a new Note object
-            Note newNote = new Note(title, location, tag, dueDate, reminder, priority, color, attachmentUri, smallInfo);
+            Note newNote = new Note(title, location, tag, dueDate, reminder, priority, color, attachmentUri, smallInfo, uid);
 
             // Save note to Firestore
             FirebaseFirestore db = FirebaseFirestore.getInstance();
@@ -90,6 +96,11 @@ public class AddNoteActivity extends AppCompatActivity {
                     .add(newNote)
                     .addOnSuccessListener(documentReference -> {
                         // Successfully added the note
+                        String noteId = documentReference.getId();
+                        String noteTitle = titleInput.getText().toString().trim();
+                        long noteTimeMillis = selectedDateTime.getTimeInMillis();
+                        scheduleReminder(this, noteId, noteTitle, noteTimeMillis, 60);
+                        scheduleReminder(this, noteId, noteTitle, noteTimeMillis, 10);
                         Toast.makeText(AddNoteActivity.this, "Note added", Toast.LENGTH_SHORT).show();
 
                         // After successfully adding, return to MainFragment and load the notes
@@ -104,6 +115,42 @@ public class AddNoteActivity extends AppCompatActivity {
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP); // Clear the current activity stack
             startActivity(intent);  // Start MainActivity and return to MainFragment
         });
+    }
+    private void scheduleReminder(Context ctx,
+                                  String noteId,
+                                  String title,
+                                  long noteTimeMillis,
+                                  int minutesBefore) {
+        long triggerAt = noteTimeMillis - minutesBefore * 60_000L;
+        if (triggerAt < System.currentTimeMillis()) return; // don’t schedule past
+
+        Intent intent = new Intent(ctx, NotificationReceiver.class)
+                .putExtra("extra_note_id", noteId)
+                .putExtra("extra_note_title", title)
+                .putExtra("extra_offset", minutesBefore == 60 ? "hour" : "ten");
+
+        int requestCode = (noteId + minutesBefore).hashCode();
+        PendingIntent pi = PendingIntent.getBroadcast(
+                ctx,
+                requestCode,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (!am.canScheduleExactAlarms()) {
+                Intent i = new Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM);
+                // If you call from an Activity, you can cast ctx to Activity;
+                // otherwise add FLAG_ACTIVITY_NEW_TASK:
+                i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(i);
+                return;
+            }
+        }
+        AlarmManager.AlarmClockInfo info = new AlarmManager.AlarmClockInfo(triggerAt, pi);
+        am.setAlarmClock(info, pi);
+
     }
 
     private void setupDateTimePickers() {

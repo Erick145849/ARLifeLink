@@ -19,7 +19,9 @@
             android:padding="16dp"
             android:layout_marginBottom="16dp"
             android:textSize="18sp"
-            android:background="@drawable/rounded_edittext"/>
+            android:forceDarkAllowed="false"
+            android:background="@drawable/rounded_edittext"
+            android:textColor="@color/color_black"/>
 
         <!-- Tag Spinner -->
         <Spinner
@@ -71,7 +73,9 @@
             android:padding="16dp"
             android:textSize="16sp"
             android:layout_marginBottom="16dp"
-            android:background="@drawable/rounded_edittext"/>
+            android:background="@drawable/rounded_edittext"
+            android:forceDarkAllowed="false"
+            android:textColor="@color/color_black"/>
 
         <!-- Location Text -->
         <TextView

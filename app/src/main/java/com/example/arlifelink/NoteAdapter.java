@@ -62,12 +62,17 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         // Bind the data from the Note object to the TextViews in the ViewHolder
         holder.noteTitle.setText(note.getTitle() != null ? note.getTitle() : "");
         holder.noteDate.setText(note.getDueDate() != null ? note.getDueDate() : "");
+        holder.noteTime.setText(note.getReminder() != null ? note.getReminder() : "");
         holder.noteLocation.setText(note.getLocation() != null ? note.getLocation() : "");
         holder.noteCategory.setText(note.getTags() != null ? note.getTags() : "");
         holder.notePriority.setText(note.getPriority() != null ? note.getPriority() : "");
         holder.noteSmallInfo.setText(note.getSmallInfo() != null ? note.getSmallInfo() : "");
 
-
+        if (note.isFlagged()) {
+            holder.flagIcon.setVisibility(View.VISIBLE);
+        } else {
+            holder.flagIcon.setVisibility(View.GONE);
+        }
         holder.viewAttachmentsButton.setVisibility(View.VISIBLE);
         holder.viewAttachmentsButton.setOnClickListener(v -> {
             String attachmentUriString = note.getAttachment();
@@ -99,27 +104,14 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         }
         holder.shareButton.setVisibility(View.VISIBLE);
         holder.shareButton.setOnClickListener(v -> {
-            // Pop up a dialog to enter recipient email
-            final EditText input = new EditText(context);
-            new AlertDialog.Builder(context)
-                    .setTitle("Share Note")
-                    .setMessage("Enter email to share with:")
-                    .setView(input)
-                    .setPositiveButton("Share", (dialog, which) -> {
-                        String email = input.getText().toString().trim();
-                        if (!email.isEmpty()) {
-                            shareNoteInRTDB(
-                                    FirebaseAuth.getInstance().getCurrentUser().getUid(),
-                                    note.getId(),
-                                    input.getText().toString()
-                            );
-                        } else {
-                            Toast.makeText(context, "Email cannot be empty", Toast.LENGTH_SHORT).show();
-                        }
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
+            mainFragment.promptForShareEmail(note);
         });
+        holder.arButton.setVisibility(View.VISIBLE);
+        holder.arButton.setOnClickListener(v -> {
+            // tell MainFragment to launch AR for this note
+            mainFragment.launchArForNote(note.getTitle());
+        });
+
         // Set up the delete button
         holder.deleteButton.setOnClickListener(v -> {
             // Call deleteNote() method from MainFragment
@@ -131,48 +123,6 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
         return this.context;
     }
 
-    private void shareNoteInRTDB(String ownerUid, String noteId, String recipientEmail) {
-        // 1) Find the recipient’s UID by their email
-        DatabaseReference usersRef = FirebaseDatabase.getInstance()
-                .getReference("users");
-        Query query = usersRef.orderByChild("email")
-                .equalTo(recipientEmail.trim().toLowerCase(Locale.US));
-        query.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                if (!snapshot.exists()) {
-                    Toast.makeText(context, "No user with that email", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                // Grab the first match
-                String recipientUid = snapshot.getChildren().iterator().next().getKey();
-
-                // 2) Update only that one note’s sharedWith list
-                DatabaseReference sharedRef = FirebaseDatabase.getInstance()
-                        .getReference("userNotes")
-                        .child(ownerUid)
-                        .child(noteId)
-                        .child("sharedWith")
-                        .child(recipientUid);
-
-                sharedRef.setValue(true)
-                        .addOnSuccessListener(aVoid ->
-                                Toast.makeText(context, "Shared!", Toast.LENGTH_SHORT).show()
-                        )
-                        .addOnFailureListener(e ->
-                                Toast.makeText(context, "Share failed: " + e.getMessage(),
-                                        Toast.LENGTH_LONG).show()
-                        );
-            }
-
-            @Override
-            public void onCancelled(DatabaseError error) {
-                Toast.makeText(context, "Lookup failed: " + error.getMessage(),
-                        Toast.LENGTH_LONG).show();
-            }
-        });
-    }
-
 
     @Override
     public int getItemCount() {
@@ -182,9 +132,10 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
     // ViewHolder class for binding the note views
     public class NoteViewHolder extends RecyclerView.ViewHolder {
 
-        TextView noteTitle, noteDate, noteCategory, notePriority, noteLocation, noteSmallInfo, noteAttachments;
-        Button deleteButton, viewAttachmentsButton, shareButton;
+        TextView noteTitle, noteDate, noteTime, noteCategory, notePriority, noteLocation, noteSmallInfo, noteAttachments;
+        Button deleteButton, viewAttachmentsButton, shareButton, arButton;
         View noteColor; // Change to View instead of LinearLayout
+        ImageView flagIcon;
         public ImageView attachmentImageView;
 
         @SuppressLint("WrongViewCast")
@@ -192,6 +143,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             super(itemView);
             noteTitle = itemView.findViewById(R.id.textTitle);
             noteDate = itemView.findViewById(R.id.textDate);
+            noteTime = itemView.findViewById(R.id.tvDueDateTim);
             noteLocation = itemView.findViewById(R.id.textLocation);
             noteCategory = itemView.findViewById(R.id.textCategory);
             notePriority = itemView.findViewById(R.id.textPriority);
@@ -200,6 +152,8 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NoteViewHolder
             // Make sure to initialize the viewAttachmentsButton
             viewAttachmentsButton = itemView.findViewById(R.id.viewAttachmentsButton);  // This should match the ID in the layout
             shareButton = itemView.findViewById(R.id.shareButton);
+            arButton = itemView.findViewById(R.id.button_ar);
+            flagIcon = itemView.findViewById(R.id.flagIcon);
             // Initialize the delete button
             deleteButton = itemView.findViewById(R.id.delete_button);
         }

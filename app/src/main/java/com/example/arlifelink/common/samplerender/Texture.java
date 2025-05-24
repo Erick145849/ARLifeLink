@@ -23,6 +23,7 @@ import android.util.Log;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /** A GPU-side texture. */
 public class Texture implements Closeable {
@@ -30,6 +31,46 @@ public class Texture implements Closeable {
 
   private final int[] textureId = {0};
   private final Target target;
+
+  public static Texture createFromBitmap(
+          SampleRender render,
+          Bitmap bmp,
+          WrapMode wrapMode,
+          ColorFormat colorFormat
+  ) {
+    // 1) Create the base Texture (allocates a GL texture and sets filters/wrap)
+    Texture texture = new Texture(render, Target.TEXTURE_2D, wrapMode);
+
+    // 2) Copy the Bitmap’s pixels into a native ByteBuffer
+    ByteBuffer buffer = ByteBuffer
+            .allocateDirect(bmp.getByteCount())
+            .order(ByteOrder.nativeOrder());
+    bmp.copyPixelsToBuffer(buffer);
+    buffer.rewind();
+
+    // 3) Bind the texture and upload the pixel data
+    GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, texture.getTextureId());
+    GLError.maybeThrowGLException("Failed to bind texture", "glBindTexture");
+
+    GLES30.glTexImage2D(
+            GLES30.GL_TEXTURE_2D,      // target
+            /* level= */ 0,            // mip level
+            colorFormat.glesEnum,      // internal format (e.g. SRGB8_ALPHA8)
+            bmp.getWidth(),            // width
+            bmp.getHeight(),           // height
+            /* border= */ 0,
+            GLES30.GL_RGBA,            // pixel format
+            GLES30.GL_UNSIGNED_BYTE,   // type
+            buffer                     // pixel data
+    );
+    GLError.maybeThrowGLException("Failed to populate texture data", "glTexImage2D");
+
+    // 4) Generate mipmaps for this texture (optional but recommended)
+    GLES30.glGenerateMipmap(GLES30.GL_TEXTURE_2D);
+    GLError.maybeThrowGLException("Failed to generate mipmaps", "glGenerateMipmap");
+
+    return texture;
+  }
 
   /**
    * Describes the way the texture's edges are rendered.

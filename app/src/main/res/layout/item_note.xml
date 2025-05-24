@@ -5,11 +5,14 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/note_background"
-    android:padding="8dp">
+    android:layout_marginBottom="8dp"
+    android:layout_marginTop="8dp"
+    android:padding="12dp">
 
     <!-- Title of the note -->
     <androidx.appcompat.widget.AppCompatTextView
         android:id="@+id/textTitle"
+        android:textAlignment="center"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="8dp"
@@ -20,12 +23,19 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         android:autoSizeTextType="uniform"
-        android:autoSizeMinTextSize="14sp"
-        android:autoSizeMaxTextSize="24sp"
-        android:autoSizeStepGranularity="2sp"
+        android:autoSizePresetSizes="@array/note_title_sizes"
         />
 
 
+    <ImageView
+        android:id="@+id/flagIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/ic_exclamation"
+        android:contentDescription="Flagged Note"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
     <!-- Date, Location, Category, Priority, Small Info, and Attachments -->
     <LinearLayout
         android:id="@+id/detailsLayout"
@@ -34,7 +44,9 @@
         android:layout_height="wrap_content"
         app:layout_constraintTop_toBottomOf="@id/textTitle"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintEnd_toEndOf="parent"
+        android:autoSizeTextType="uniform"
+        android:autoSizePresetSizes="@array/note_detail_sizes">
 
         <androidx.appcompat.widget.AppCompatTextView
             android:id="@+id/textDate"
@@ -42,9 +54,17 @@
             android:layout_height="wrap_content"
             android:text="Due Date"
             android:textColor="@android:color/darker_gray"
+            android:autoSizeStepGranularity="1sp"
             android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="10sp"
-            android:autoSizeMaxTextSize="12sp"
+            android:autoSizePresetSizes="@array/note_detail_sizes"/>
+        <androidx.appcompat.widget.AppCompatTextView
+            android:id="@+id/tvDueDateTim"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Due: "
+            android:textColor="@android:color/darker_gray"
+            android:autoSizeTextType="uniform"
+            android:autoSizePresetSizes="@array/note_detail_sizes"
             android:autoSizeStepGranularity="1sp" />
 
         <androidx.appcompat.widget.AppCompatTextView
@@ -54,8 +74,7 @@
             android:text="Location"
             android:textColor="@android:color/darker_gray"
             android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="10sp"
-            android:autoSizeMaxTextSize="12sp"
+            android:autoSizePresetSizes="@array/note_detail_sizes"
             android:autoSizeStepGranularity="1sp" />
 
         <androidx.appcompat.widget.AppCompatTextView
@@ -65,8 +84,7 @@
             android:text="Category"
             android:textColor="@android:color/darker_gray"
             android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="10sp"
-            android:autoSizeMaxTextSize="12sp"
+            android:autoSizePresetSizes="@array/note_detail_sizes"
             android:autoSizeStepGranularity="1sp" />
 
         <androidx.appcompat.widget.AppCompatTextView
@@ -76,8 +94,7 @@
             android:text="Priority"
             android:textColor="@android:color/darker_gray"
             android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="10sp"
-            android:autoSizeMaxTextSize="12sp"
+            android:autoSizePresetSizes="@array/note_detail_sizes"
             android:autoSizeStepGranularity="1sp" />
 
         <androidx.appcompat.widget.AppCompatTextView
@@ -87,20 +104,9 @@
             android:text="Info"
             android:textColor="@android:color/darker_gray"
             android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="10sp"
-            android:autoSizeMaxTextSize="12sp"
+            android:autoSizePresetSizes="@array/note_detail_sizes"
             android:autoSizeStepGranularity="1sp" />
 
-        <androidx.appcompat.widget.AppCompatTextView
-            android:id="@+id/textAttachments"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Attachments"
-            android:textColor="@android:color/darker_gray"
-            android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="10sp"
-            android:autoSizeMaxTextSize="12sp"
-            android:autoSizeStepGranularity="1sp" />
 
     </LinearLayout>
 
@@ -118,13 +124,12 @@
             android:id="@+id/viewAttachmentsButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="View Attachments"
+            android:text="View"
             android:layout_marginTop="8dp"
             android:layout_marginRight="20dp"
             android:minWidth="40dp"
             android:minHeight="40dp"
             android:padding="8dp"
-            android:textSize="14sp"
             android:visibility="gone"/>
         <Button
             android:id="@+id/shareButton"
@@ -136,8 +141,18 @@
             android:minWidth="40dp"
             android:minHeight="40dp"
             android:padding="8dp"
-            android:textSize="14sp"
             android:visibility="gone"/>
+        <Button
+            android:id="@+id/button_ar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AR"
+            android:layout_marginTop="8dp"
+            android:layout_marginRight="20dp"
+            android:minWidth="40dp"
+            android:minHeight="40dp"
+            android:padding="8dp" />
+
         <Button
             android:id="@+id/delete_button"
             android:layout_width="wrap_content"
@@ -147,7 +162,6 @@
             android:minHeight="40dp"
             android:padding="8dp"
             android:text="-"
-            android:textSize="14sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/detailsLayout" />
 

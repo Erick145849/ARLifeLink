@@ -1,13 +1,19 @@
 package com.example.arlifelink;
 
+import android.app.AlarmManager;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.InputType;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
@@ -16,18 +22,21 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class MainFragment extends Fragment {
-
+    private RelativeLayout rootLayout;
     private RecyclerView recyclerView;
     private NoteAdapter noteAdapter;
     private ArrayList<Note> noteList;
@@ -45,6 +54,7 @@ public class MainFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_main, container, false);
 
         // Initialize Firestore
+        rootLayout    = view.findViewById(R.id.rootLayout);
         db = FirebaseFirestore.getInstance();
         notesRef = db.collection("notes");
 
@@ -94,70 +104,169 @@ public class MainFragment extends Fragment {
         }
     }
 
-
     public void deleteNote(final String noteId) {
-        // Show confirmation dialog
         new AlertDialog.Builder(getContext())
                 .setTitle("Delete Note")
                 .setMessage("Are you sure you want to delete this note?")
-                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        // Proceed with deleting the note from Firestore
-                        DocumentReference noteRef = db.collection("notes").document(noteId);
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    // 1) cancel any scheduled alarms
+                    cancelReminders(requireContext(), noteId);
 
-                        noteRef.delete()
-                                .addOnSuccessListener(aVoid -> {
-                                    // Successfully deleted the note
-                                    Toast.makeText(getContext(), "Note deleted", Toast.LENGTH_SHORT).show();
-                                })
-                                .addOnFailureListener(e -> {
-                                    // Failed to delete the note
-                                    Toast.makeText(getContext(), "Error deleting note", Toast.LENGTH_SHORT).show();
-                                });
+                    // 2) delete from Firestore
+                    DocumentReference noteRef = db.collection("notes").document(noteId);
+                    noteRef.delete()
+                            .addOnSuccessListener(aVoid ->
+                                    Toast.makeText(getContext(), "Note deleted", Toast.LENGTH_SHORT).show()
+                            )
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(getContext(), "Error deleting note", Toast.LENGTH_SHORT).show()
+                            );
 
-                        // Optionally remove the note from the local list (RecyclerView)
-                        for (Note note : noteList) {
-                            if (note.getId().equals(noteId)) {
-                                noteList.remove(note);
-                                noteAdapter.notifyItemRemoved(noteList.indexOf(note));  // Notify the adapter to remove the item
-                                break;
-                            }
+                    // 3) remove from local list & notify adapter
+                    int posToRemove = -1;
+                    for (int i = 0; i < noteList.size(); i++) {
+                        if (noteList.get(i).getId().equals(noteId)) {
+                            posToRemove = i;
+                            break;
                         }
                     }
+                    if (posToRemove != -1) {
+                        noteList.remove(posToRemove);
+                        noteAdapter.notifyItemRemoved(posToRemove);
+                    }
                 })
-                .setNegativeButton("No", null)  // Cancel the delete operation
+                .setNegativeButton("No", null)
                 .show();
     }
 
+    private void cancelReminders(Context ctx, String noteId) {
+        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+        for (int minutesBefore : new int[]{60, 10}) {
+            Intent intent = new Intent(ctx, NotificationReceiver.class);
+            int code = (noteId + minutesBefore).hashCode();
+            PendingIntent pi = PendingIntent.getBroadcast(
+                    ctx,
+                    code,
+                    intent,
+                    PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE
+            );
+            if (pi != null) am.cancel(pi);
+        }
+    }
+
+
     // Load notes from Firestore
     private void loadNotesFromFirestore() {
-        notesRef.addSnapshotListener(new EventListener<QuerySnapshot>() {
-            @Override
-            public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
-                if (error != null) {
-                    Log.e("MainFragment", "Firestore error: " + error.getMessage());
-                    return;
-                }
+        String me = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
-                // Clear the list and repopulate with updated notes
-                noteList.clear();
-                for (QueryDocumentSnapshot doc : value) {
-                    Note note = doc.toObject(Note.class);
-                    note.setId(doc.getId()); // Set the document ID as the note's ID
-                    Log.d("MainFragment", "Loaded Note: " + note.getTitle());
-                    noteList.add(note);
+        // Listen to notes you own
+        notesRef.addSnapshotListener((snapshots, error) -> {
+            if (error != null) return;
+
+            noteList.clear();
+            for (QueryDocumentSnapshot doc : snapshots) {
+                Note n = doc.toObject(Note.class);
+                n.setId(doc.getId());
+                if (me.equals(n.getOwner())
+                        || (n.getSharedWith() != null && n.getSharedWith().contains(me))) {
+                    noteList.add(n);
                 }
-                // Notify the adapter to update the RecyclerView
-                noteAdapter.notifyDataSetChanged();
             }
+            NoteAnalyzer.analyzeNotes(noteList);
+            noteAdapter.notifyDataSetChanged();
+            swapBackground();
         });
     }
+
+    private void onNotesChanged(QuerySnapshot snapshots, FirebaseFirestoreException error) {
+        if (error != null) {
+            Log.e("MainFragment", "Firestore error: " + error.getMessage());
+            return;
+        }
+        noteList.clear();
+        for (QueryDocumentSnapshot doc : snapshots) {
+            Note note = doc.toObject(Note.class);
+            note.setId(doc.getId());
+            noteList.add(note);
+        }
+        NoteAnalyzer.analyzeNotes(noteList);
+        noteAdapter.notifyDataSetChanged();
+        swapBackground();
+    }
+    public void promptForShareEmail(Note note) {
+        EditText input = new EditText(getContext());
+        input.setInputType(InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+
+        new AlertDialog.Builder(getContext())
+                .setTitle("Share Note")
+                .setMessage("Enter the email to share with:")
+                .setView(input)
+                .setPositiveButton("Share", (dlg, which) -> {
+                    String email = input.getText().toString().trim();
+                    if (!email.isEmpty()) {
+                        shareNoteWithEmail(note.getId(), email);
+                    } else {
+                        Toast.makeText(getContext(), "Email can’t be empty", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+    private void shareNoteWithEmail(String noteId, String targetEmail) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        // 1) Find the user UID by email
+        db.collection("users")
+                .whereEqualTo("email", targetEmail)
+                .get()
+                .addOnSuccessListener(q -> {
+                    if (q.isEmpty()) {
+                        Toast.makeText(getContext(), "User not found", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String targetUid = q.getDocuments().get(0).getId();
+
+                    // 2) Add them to sharedWith array
+                    db.collection("notes")
+                            .document(noteId)
+                            .update("sharedWith", FieldValue.arrayUnion(targetUid))
+                            .addOnSuccessListener(a ->
+                                    Toast.makeText(getContext(),
+                                            "Shared successfully with " + targetEmail,
+                                            Toast.LENGTH_SHORT).show()
+                            )
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(getContext(),
+                                            "Share failed: " + e.getMessage(),
+                                            Toast.LENGTH_SHORT).show()
+                            );
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(getContext(),
+                                "Lookup failed: " + e.getMessage(),
+                                Toast.LENGTH_SHORT).show()
+                );
+    }
+
+    private void swapBackground() {
+        if (noteList.isEmpty()) {
+            rootLayout.setBackgroundResource(R.drawable.bg_empty_notes);
+        } else {
+            rootLayout.setBackgroundResource(R.drawable.bg_with_notes);
+        }
+    }
+
 
     @Override
     public void onResume() {
         super.onResume();
         // Optionally reload notes when returning from AddNoteActivity
         loadNotesFromFirestore();
+    }
+
+    public void launchArForNote(String title) {
+        Intent i = new Intent(getContext(), HelloArActivity.class);
+        i.putExtra("NOTE_TEXT", title);
+        startActivity(i);
     }
 }

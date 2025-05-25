@@ -21,6 +21,11 @@
         <item name="android:divider">@color/dividerColor</item>
 
     </style>
+    <style name="ThemeOverlay.App.LightDialog" parent="Theme.MaterialComponents.Light.Dialog.Alert">
+        <!-- Prevent Android 10+ from auto-darkening this dialog -->
+        <item name="android:forceDarkAllowed">false</item>
+        <!-- Optional: you can tweak primary/text colors here if you like -->
+    </style>
     <!-- Dark theme -->
     <style name="AppTheme.Dark" parent="Theme.AppCompat.DayNight.DarkActionBar">
         <item name="colorPrimary">@color/colorPrimary1</item>

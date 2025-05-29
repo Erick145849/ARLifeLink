@@ -17,6 +17,9 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -112,6 +115,16 @@ public class MemoriesMapFragment extends Fragment implements OnMapReadyCallback 
 
     @Override
     public void onMapReady(@NonNull GoogleMap googleMap) {
+        FirebaseUser me = FirebaseAuth.getInstance().getCurrentUser();
+        if (me == null) {
+            // 🚨 not logged in: bail out or redirect to login
+            Toast.makeText(requireContext(),
+                    "You must be signed in to see your memories",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String myUid = me.getUid();
+
         map = googleMap;
 
         // Disable the default My Location button (we have our own)
@@ -135,6 +148,7 @@ public class MemoriesMapFragment extends Fragment implements OnMapReadyCallback 
 
             // ** NOW load your notes **
             db.collection("notes")
+                    .whereEqualTo("owner", myUid)
                     .get()
                     .addOnSuccessListener((QuerySnapshot snap) -> {
                         if (snap.isEmpty()) return;
